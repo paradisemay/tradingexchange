@@ -24,8 +24,6 @@ configurations.all {
 }
 
 dependencies {
-    implementation(project(":core"))
-
     // Ktor server
     implementation(ktorLibs.serialization.kotlinx.json)
     implementation(ktorLibs.server.auth)
@@ -47,6 +45,12 @@ dependencies {
 
     // Redis
     implementation(libs.lettuce.core)
+
+    // OpenTelemetry (inlined from former :core module)
+    implementation(libs.opentelemetry.exporterOtlp)
+    implementation(libs.opentelemetry.ktorInstrumentation)
+    implementation(libs.opentelemetry.sdkAutoconfigure)
+    implementation(libs.opentelemetry.semconv)
 
     // Security
     implementation(libs.argon2.jvm)
