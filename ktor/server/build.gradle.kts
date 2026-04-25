@@ -12,6 +12,17 @@ kotlin {
     jvmToolchain(21)
 }
 
+// Force updated transitive deps to resolve Snyk high findings (CWE-770, CVE-2024-25710, CVE-2025-48924)
+// Note: SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 requires jackson-core 2.21.2 which is unreleased;
+//       mitigated by not exposing Flyway JSON parsing to untrusted input.
+configurations.all {
+    resolutionStrategy {
+        force("com.fasterxml.jackson.core:jackson-core:2.18.6")
+        force("org.apache.commons:commons-compress:1.26.0")
+        force("org.apache.commons:commons-lang3:3.18.0")
+    }
+}
+
 dependencies {
     implementation(project(":core"))
 
