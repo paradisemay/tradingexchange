@@ -223,9 +223,38 @@ ktor/
     │   │   ├── transactions/{Repository,Routes}.kt
     │   │   ├── quotes/{PriceCache,WebSocketManager,RedisSubscriber,WsHandler}.kt
     │   │   └── health/HealthRoutes.kt
-    │   └── {Security,StatusPages,Monitoring,Websockets,ServerOpenTelemetry,Serialization}.kt
+    │   └── plugins/{Security,Monitoring,Serialization,StatusPages,Websockets,OpenTelemetry}.kt
     └── resources/
         ├── application.yaml
         ├── logback.xml
         └── db/migration/{V001__init,V002__indexes,V003__seed}.sql
 ```
+
+---
+
+## Как запустить
+
+### Вариант 1 — Docker Compose (рекомендуется)
+
+```bash
+cp .env.example .env          # выставить JWT_SECRET и POSTGRES_PASSWORD
+docker compose up --build     # поднимает postgres + redis + exporters + ktor
+curl http://localhost:8080/health/ready
+```
+
+### Вариант 2 — Локально (только инфраструктура в Docker)
+
+```bash
+docker compose up postgres redis -d
+cp .env.example .env          # POSTGRES_HOST=localhost, REDIS_HOST=localhost
+export $(grep -v '^#' .env | xargs)
+./gradlew :server:run
+```
+
+### Порядок инициализации
+
+1. Docker поднимает `postgres` → healthcheck `pg_isready`
+2. Docker поднимает `redis` → healthcheck `PING`
+3. Ktor стартует: **Flyway запускает миграции V001→V003** автоматически
+4. Поднимается HTTP (порт 8080) + Redis Pub/Sub подписка (`quotes.ticks`)
+5. `/health/ready` → `{"status":"UP","db":"UP","redis":"UP"}`
