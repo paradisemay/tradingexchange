@@ -1,0 +1,353 @@
+openapi: "3.0.3"
+info:
+  title: Broker Backend API
+  version: "1.0.0"
+  description: Ktor бэкенд брокерского сервиса
+servers:
+  - url: http://localhost:8080
+    description: Local
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        errorCode: { type: string, example: "INSUFFICIENT_FUNDS" }
+        message: { type: string }
+        details: { type: object, additionalProperties: { type: string } }
+        traceId: { type: string }
+
+    TokenPair:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+
+    RegisterResponse:
+      type: object
+      properties:
+        userId: { type: string, format: uuid }
+        accessToken: { type: string }
+        refreshToken: { type: string }
+
+    UserProfile:
+      type: object
+      properties:
+        userId: { type: string, format: uuid }
+        email: { type: string }
+        fullName: { type: string, nullable: true }
+        role: { type: string, enum: [CLIENT, ADMIN] }
+
+    PortfolioPosition:
+      type: object
+      properties:
+        ticker: { type: string, example: "SBER" }
+        quantity: { type: string, example: "10.00000000" }
+        avgPrice: { type: string, example: "250.1200" }
+        currentPrice: { type: string, nullable: true, example: "252.0000" }
+        currency: { type: string, example: "RUB" }
+
+    Portfolio:
+      type: object
+      properties:
+        positions:
+          type: array
+          items: { $ref: '#/components/schemas/PortfolioPosition' }
+        cash:
+          type: object
+          properties:
+            currency: { type: string }
+            available: { type: string }
+
+    Instrument:
+      type: object
+      properties:
+        ticker: { type: string }
+        name: { type: string }
+        currency: { type: string }
+        lotSize: { type: integer }
+        isActive: { type: boolean }
+        lastPrice: { type: string, nullable: true }
+
+    CreateOrderRequest:
+      type: object
+      required: [ticker, side, orderType, quantity]
+      properties:
+        ticker: { type: string, example: "SBER" }
+        side: { type: string, enum: [BUY, SELL] }
+        orderType: { type: string, enum: [MARKET, LIMIT] }
+        quantity: { type: string, example: "10" }
+        limitPrice: { type: string, nullable: true }
+
+    OrderResponse:
+      type: object
+      properties:
+        orderId: { type: string, format: uuid }
+        ticker: { type: string }
+        side: { type: string }
+        orderType: { type: string }
+        status: { type: string, enum: [NEW, FILLED, CANCELLED, REJECTED] }
+        quantity: { type: string }
+        executedPrice: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    TransactionResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [DEPOSIT, WITHDRAW, BUY, SELL, FEE] }
+        ticker: { type: string, nullable: true }
+        amount: { type: string }
+        quantity: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health/live:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      security: []
+      responses:
+        "200":
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "UP" }
+
+  /health/ready:
+    get:
+      tags: [Health]
+      summary: Readiness probe
+      security: []
+      responses:
+        "200":
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  db: { type: string }
+                  redis: { type: string }
+        "503":
+          description: Service not ready
+
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                fullName: { type: string }
+      responses:
+        "201":
+          description: User registered
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegisterResponse' }
+        "400": { description: Validation error }
+        "409": { description: Email already registered }
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenPair' }
+        "401": { description: Invalid credentials }
+
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Rotate refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenPair' }
+        "401": { description: Invalid or expired token }
+
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke refresh token
+      responses:
+        "204": { description: Logged out }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+
+  /api/v1/me:
+    get:
+      tags: [User]
+      summary: Get current user profile
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserProfile' }
+
+  /api/v1/portfolio:
+    get:
+      tags: [Portfolio]
+      summary: Get portfolio positions and cash balance
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Portfolio' }
+
+  /api/v1/instruments:
+    get:
+      tags: [Instruments]
+      summary: Search instruments
+      parameters:
+        - name: query
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Instrument' }
+
+  /api/v1/orders:
+    post:
+      tags: [Orders]
+      summary: Create market or limit order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateOrderRequest' }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderResponse' }
+        "400": { description: Validation error }
+        "422": { description: Insufficient funds or position }
+        "503": { description: Quote unavailable }
+    get:
+      tags: [Orders]
+      summary: List orders (cursor pagination)
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50 }
+        - name: cursor
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orders:
+                    type: array
+                    items: { $ref: '#/components/schemas/OrderResponse' }
+                  nextCursor: { type: string, nullable: true }
+
+  /api/v1/transactions:
+    get:
+      tags: [Transactions]
+      summary: List transactions (cursor pagination)
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50 }
+        - name: cursor
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transactions:
+                    type: array
+                    items: { $ref: '#/components/schemas/TransactionResponse' }
+                  nextCursor: { type: string, nullable: true }
+
+  /api/v1/quotes/ws:
+    get:
+      tags: [Quotes]
+      summary: WebSocket — real-time quotes
+      description: |
+        Upgrade to WebSocket. JWT via `Authorization: Bearer <token>` header or `?accessToken=` query param.
+
+        **Client → Server:**
+        ```json
+        {"type":"subscribe","tickers":["SBER","GAZP"]}
+        {"type":"unsubscribe","tickers":["SBER"]}
+        ```
+
+        **Server → Client:**
+        ```json
+        {"type":"quote","ticker":"SBER","price":"252.0000","currency":"RUB","timestampMs":1775901000000}
+        ```
+      parameters:
+        - name: accessToken
+          in: query
+          schema: { type: string }
+      responses:
+        "101": { description: WebSocket upgrade }
+        "403": { description: Unauthorized }

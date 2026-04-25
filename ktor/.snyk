@@ -1,0 +1,12 @@
+# Snyk (https://snyk.io) policy file
+version: v1.25.0
+ignore:
+  SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551:
+    - '*':
+        reason: >
+          Fix requires jackson-core 2.21.2 (via flyway-core 11.8.1) which is not yet
+          available on Maven Central as of 2026-04-25. The vulnerability (CWE-770) is
+          in Jackson's JSON parsing; Flyway uses it only for internal classpath config
+          files — no untrusted user input is parsed through this code path.
+          Re-evaluate when flyway-core >= 11.8.1 is released.
+        expires: '2026-10-25T00:00:00.000Z'
