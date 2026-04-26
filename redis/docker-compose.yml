@@ -1,0 +1,54 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: tradingexchange-redis
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_MAXMEMORY: ${REDIS_MAXMEMORY:-512mb}
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        args="redis-server /usr/local/etc/redis/redis.conf --maxmemory $${REDIS_MAXMEMORY:-512mb}"
+        if [ -n "$${REDIS_PASSWORD:-}" ]; then
+          args="$$args --requirepass $$REDIS_PASSWORD"
+        fi
+        exec $$args
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "if [ -n \"$${REDIS_PASSWORD:-}\" ]; then REDISCLI_AUTH=\"$${REDIS_PASSWORD}\" redis-cli ping; else redis-cli ping; fi",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - redis-net
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.66.0
+    container_name: tradingexchange-redis-exporter
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    ports:
+      - "${REDIS_EXPORTER_PORT:-9121}:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - redis-net
+
+volumes:
+  redis_data:
+
+networks:
+  redis-net:
+    driver: bridge
