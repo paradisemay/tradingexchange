@@ -1,0 +1,10 @@
+[
+  {
+    "ticker": "SBER",
+    "name": "Sberbank",
+    "currency": "RUB",
+    "lotSize": 1,
+    "isActive": true,
+    "lastPrice": "252.0000"
+  }
+]

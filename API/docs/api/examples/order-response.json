@@ -1,0 +1,10 @@
+{
+  "orderId": "f84cdb05-2833-4c72-b1ee-bb5c964abf8f",
+  "ticker": "SBER",
+  "side": "BUY",
+  "orderType": "MARKET",
+  "status": "FILLED",
+  "quantity": "10",
+  "executedPrice": "252.0000",
+  "createdAt": "2026-04-11T12:30:00.000Z"
+}

@@ -1,0 +1,9 @@
+{
+  "errorCode": "INSUFFICIENT_FUNDS",
+  "message": "Insufficient funds",
+  "details": {
+    "required": "2520.0000",
+    "available": "1000.0000"
+  },
+  "traceId": ""
+}

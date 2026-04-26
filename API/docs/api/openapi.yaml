@@ -1,0 +1,532 @@
+openapi: 3.1.0
+info:
+  title: TradingExchange Broker API
+  version: 1.0.0
+  description: |
+    Ktor-compatible REST contract for the trading exchange project.
+    This specification intentionally mirrors the current Ktor implementation.
+servers:
+  - url: http://localhost:8081
+    description: API module mock server
+  - url: http://localhost:8080
+    description: Current Ktor backend
+tags:
+  - name: Health
+  - name: Auth
+  - name: User
+  - name: Portfolio
+  - name: Instruments
+  - name: Orders
+  - name: Transactions
+security:
+  - bearerAuth: []
+paths:
+  /health/live:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      security: []
+      responses:
+        "200":
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LivenessResponse"
+              examples:
+                live:
+                  value: { status: UP }
+  /health/ready:
+    get:
+      tags: [Health]
+      summary: Readiness probe
+      security: []
+      responses:
+        "200":
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessResponse"
+              examples:
+                ready:
+                  value: { status: UP, db: UP, redis: UP }
+        "503":
+          description: One or more dependencies are unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessResponse"
+              examples:
+                redisDown:
+                  value: { status: DOWN, db: UP, redis: DOWN }
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+            examples:
+              default:
+                value: { email: trader@example.com, password: secret123, fullName: Ivan Ivanov }
+      responses:
+        "201":
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            examples:
+              default:
+                value: { email: trader@example.com, password: secret123 }
+      responses:
+        "200":
+          description: Token pair
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenPair"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Rotate refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+            examples:
+              default:
+                value: { refreshToken: mock-refresh-token }
+      responses:
+        "200":
+          description: New token pair
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenPair"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogoutRequest"
+            examples:
+              default:
+                value: { refreshToken: mock-refresh-token }
+      responses:
+        "204":
+          description: Logged out
+        "401":
+          $ref: "#/components/responses/AuthChallenge"
+  /api/v1/me:
+    get:
+      tags: [User]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/AuthChallenge"
+  /api/v1/portfolio:
+    get:
+      tags: [Portfolio]
+      summary: Get portfolio positions and cash balance
+      responses:
+        "200":
+          description: Portfolio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioResponse"
+        "401":
+          $ref: "#/components/responses/AuthChallenge"
+  /api/v1/instruments:
+    get:
+      tags: [Instruments]
+      summary: Search instruments
+      parameters:
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+          example: SBER
+      responses:
+        "200":
+          description: Array of instruments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Instrument"
+        "401":
+          $ref: "#/components/responses/AuthChallenge"
+  /api/v1/orders:
+    post:
+      tags: [Orders]
+      summary: Create market or limit order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+            examples:
+              marketBuy:
+                value: { ticker: SBER, side: BUY, orderType: MARKET, quantity: "10", limitPrice: null }
+              limitSell:
+                value: { ticker: SBER, side: SELL, orderType: LIMIT, quantity: "1", limitPrice: "255.0000" }
+      responses:
+        "201":
+          description: Created order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthChallenge"
+        "404":
+          $ref: "#/components/responses/InstrumentNotFound"
+        "422":
+          description: Insufficient funds or position
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                insufficientFunds:
+                  value:
+                    errorCode: INSUFFICIENT_FUNDS
+                    message: Insufficient funds
+                    details: { required: "2520.0000", available: "1000.0000" }
+                    traceId: ""
+        "503":
+          description: Quote unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                quoteUnavailable:
+                  value: { errorCode: QUOTE_UNAVAILABLE, message: No price available for SBER, details: {}, traceId: "" }
+    get:
+      tags: [Orders]
+      summary: List orders with createdAt cursor pagination
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/DateTimeCursor"
+      responses:
+        "200":
+          description: Order page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderListResponse"
+        "401":
+          $ref: "#/components/responses/AuthChallenge"
+  /api/v1/transactions:
+    get:
+      tags: [Transactions]
+      summary: List transactions with createdAt cursor pagination
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/DateTimeCursor"
+      responses:
+        "200":
+          description: Transaction page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionListResponse"
+        "401":
+          $ref: "#/components/responses/AuthChallenge"
+  /api/v1/quotes/ws:
+    get:
+      tags: [Quotes]
+      summary: WebSocket endpoint for live quotes
+      description: |
+        Upgrade to WebSocket. Authorization is accepted through `Authorization: Bearer <token>`
+        or through `?accessToken=<token>` for clients that cannot set headers during handshake.
+        Message shapes are normative in `asyncapi.yaml`.
+      parameters:
+        - name: accessToken
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "101":
+          description: WebSocket upgrade
+        "401":
+          description: Unauthorized handshake
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+    DateTimeCursor:
+      name: cursor
+      in: query
+      required: false
+      description: Current Ktor cursor is an ISO-8601 createdAt value.
+      schema:
+        type: string
+        format: date-time
+      example: "2026-04-11T12:30:00Z"
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            validation:
+              value: { errorCode: VALIDATION_ERROR, message: Invalid email format, details: {}, traceId: "" }
+    Unauthorized:
+      description: Unauthorized application error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            unauthorized:
+              value: { errorCode: UNAUTHORIZED, message: Invalid credentials, details: {}, traceId: "" }
+    AuthChallenge:
+      description: JWT challenge response from current Ktor security plugin
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AuthError"
+          examples:
+            challenge:
+              value: { errorCode: UNAUTHORIZED, message: Token is missing or invalid }
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            emailExists:
+              value: { errorCode: CONFLICT, message: Email already registered, details: {}, traceId: "" }
+    InstrumentNotFound:
+      description: Instrument not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            instrumentNotFound:
+              value: { errorCode: INSTRUMENT_NOT_FOUND, message: Instrument SBER not found, details: {}, traceId: "" }
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        fullName: { type: [string, "null"] }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string }
+        password: { type: string }
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string }
+    LogoutRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string }
+    TokenPair:
+      type: object
+      required: [accessToken, refreshToken]
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+    RegisterResponse:
+      type: object
+      required: [userId, accessToken, refreshToken]
+      properties:
+        userId: { type: string, format: uuid }
+        accessToken: { type: string }
+        refreshToken: { type: string }
+    UserProfile:
+      type: object
+      required: [userId, email, role]
+      properties:
+        userId: { type: string, format: uuid }
+        email: { type: string, format: email }
+        fullName: { type: [string, "null"] }
+        role: { type: string, enum: [CLIENT, ADMIN] }
+    PortfolioResponse:
+      type: object
+      required: [positions, cash]
+      properties:
+        positions:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortfolioPosition"
+        cash:
+          $ref: "#/components/schemas/Cash"
+    PortfolioPosition:
+      type: object
+      required: [ticker, quantity, avgPrice, currentPrice, currency]
+      properties:
+        ticker: { type: string, example: SBER }
+        quantity: { type: string, example: "10.00000000" }
+        avgPrice: { type: string, example: "250.1200" }
+        currentPrice: { type: [string, "null"], example: "252.0000" }
+        currency: { type: string, example: RUB }
+    Cash:
+      type: object
+      required: [currency, available]
+      properties:
+        currency: { type: string, example: RUB }
+        available: { type: string, example: "100000.0000" }
+    Instrument:
+      type: object
+      required: [ticker, name, currency, lotSize, isActive, lastPrice]
+      properties:
+        ticker: { type: string, example: SBER }
+        name: { type: string, example: Sberbank }
+        currency: { type: string, example: RUB }
+        lotSize: { type: integer, example: 1 }
+        isActive: { type: boolean }
+        lastPrice: { type: [string, "null"], example: "252.0000" }
+    CreateOrderRequest:
+      type: object
+      required: [ticker, side, orderType, quantity]
+      properties:
+        ticker: { type: string, example: SBER }
+        side: { type: string, enum: [BUY, SELL] }
+        orderType: { type: string, enum: [MARKET, LIMIT] }
+        quantity: { type: string, example: "10" }
+        limitPrice: { type: [string, "null"], example: null }
+    OrderResponse:
+      type: object
+      required: [orderId, ticker, side, orderType, status, quantity, executedPrice, createdAt]
+      properties:
+        orderId: { type: string, format: uuid }
+        ticker: { type: string }
+        side: { type: string, enum: [BUY, SELL] }
+        orderType: { type: string, enum: [MARKET, LIMIT] }
+        status: { type: string, enum: [NEW, FILLED, CANCELLED, REJECTED] }
+        quantity: { type: string }
+        executedPrice: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
+    OrderListResponse:
+      type: object
+      required: [orders, nextCursor]
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderResponse"
+        nextCursor: { type: [string, "null"], format: date-time }
+    TransactionResponse:
+      type: object
+      required: [id, type, ticker, amount, quantity, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [DEPOSIT, WITHDRAW, BUY, SELL, FEE] }
+        ticker: { type: [string, "null"] }
+        amount: { type: string }
+        quantity: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
+    TransactionListResponse:
+      type: object
+      required: [transactions, nextCursor]
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransactionResponse"
+        nextCursor: { type: [string, "null"], format: date-time }
+    LivenessResponse:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [UP] }
+    ReadinessResponse:
+      type: object
+      required: [status, db, redis]
+      properties:
+        status: { type: string, enum: [UP, DOWN] }
+        db: { type: string, enum: [UP, DOWN] }
+        redis: { type: string, enum: [UP, DOWN] }
+    ErrorResponse:
+      type: object
+      required: [errorCode, message, details, traceId]
+      properties:
+        errorCode:
+          type: string
+          enum: [VALIDATION_ERROR, UNAUTHORIZED, FORBIDDEN, INSTRUMENT_NOT_FOUND, INSUFFICIENT_FUNDS, INSUFFICIENT_POSITION, QUOTE_UNAVAILABLE, CONFLICT, INTERNAL_ERROR]
+        message: { type: string }
+        details:
+          type: object
+          additionalProperties:
+            type: string
+        traceId:
+          type: string
+          description: Current Ktor may return an empty string.
+    AuthError:
+      type: object
+      required: [errorCode, message]
+      properties:
+        errorCode: { type: string, enum: [UNAUTHORIZED] }
+        message: { type: string }

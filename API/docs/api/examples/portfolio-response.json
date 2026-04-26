@@ -1,0 +1,15 @@
+{
+  "positions": [
+    {
+      "ticker": "SBER",
+      "quantity": "10",
+      "avgPrice": "250.1200",
+      "currentPrice": "252.0000",
+      "currency": "RUB"
+    }
+  ],
+  "cash": {
+    "currency": "RUB",
+    "available": "100000.0000"
+  }
+}

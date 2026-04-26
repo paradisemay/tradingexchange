@@ -1,0 +1,136 @@
+asyncapi: 2.6.0
+info:
+  title: TradingExchange Quotes WebSocket API
+  version: 1.0.0
+  description: Ktor-compatible WebSocket contract for live quote streaming.
+servers:
+  ktor:
+    url: localhost:8080
+    protocol: ws
+    description: Current Ktor backend
+  mock:
+    url: localhost:8081
+    protocol: ws
+    description: API module mock server
+channels:
+  /api/v1/quotes/ws:
+    description: Live quote stream. Client controls subscriptions after connection.
+    parameters:
+      accessToken:
+        description: Optional JWT fallback query parameter for clients that cannot set Authorization during WebSocket handshake.
+        schema:
+          type: string
+    subscribe:
+      summary: Server sends quote events and WebSocket errors
+      message:
+        oneOf:
+          - $ref: "#/components/messages/QuoteEvent"
+          - $ref: "#/components/messages/WsError"
+    publish:
+      summary: Client sends subscription commands
+      message:
+        oneOf:
+          - $ref: "#/components/messages/SubscribeCommand"
+          - $ref: "#/components/messages/UnsubscribeCommand"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  messages:
+    SubscribeCommand:
+      name: SubscribeCommand
+      title: Subscribe to tickers
+      payload:
+        $ref: "#/components/schemas/SubscribeCommand"
+      examples:
+        - name: SubscribeSberGazp
+          payload: { type: subscribe, tickers: [SBER, GAZP] }
+    UnsubscribeCommand:
+      name: UnsubscribeCommand
+      title: Unsubscribe from tickers
+      payload:
+        $ref: "#/components/schemas/UnsubscribeCommand"
+      examples:
+        - name: UnsubscribeSber
+          payload: { type: unsubscribe, tickers: [SBER] }
+    QuoteEvent:
+      name: QuoteEvent
+      title: Quote event
+      payload:
+        $ref: "#/components/schemas/QuoteEvent"
+      examples:
+        - name: SberQuote
+          payload: { type: quote, ticker: SBER, price: "252.0000", currency: RUB, timestampMs: 1775901000000 }
+    WsError:
+      name: WsError
+      title: WebSocket error event
+      payload:
+        $ref: "#/components/schemas/WsError"
+      examples:
+        - name: ValidationError
+          payload: { type: error, errorCode: VALIDATION_ERROR, message: Invalid WebSocket JSON frame, details: {}, traceId: "" }
+  schemas:
+    SubscribeCommand:
+      type: object
+      required: [type, tickers]
+      properties:
+        type:
+          type: string
+          const: subscribe
+        tickers:
+          type: array
+          items:
+            type: string
+          example: [SBER, GAZP]
+    UnsubscribeCommand:
+      type: object
+      required: [type, tickers]
+      properties:
+        type:
+          type: string
+          const: unsubscribe
+        tickers:
+          type: array
+          items:
+            type: string
+          example: [SBER]
+    QuoteEvent:
+      type: object
+      required: [type, ticker, price, currency, timestampMs]
+      properties:
+        type:
+          type: string
+          const: quote
+        ticker:
+          type: string
+          example: SBER
+        price:
+          type: string
+          example: "252.0000"
+        currency:
+          type: string
+          example: RUB
+        timestampMs:
+          type: integer
+          format: int64
+          example: 1775901000000
+    WsError:
+      type: object
+      required: [type, errorCode, message, details, traceId]
+      properties:
+        type:
+          type: string
+          const: error
+        errorCode:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties:
+            type: string
+        traceId:
+          type: string
