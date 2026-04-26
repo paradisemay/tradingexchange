@@ -25,6 +25,7 @@ configurations.all {
 
 dependencies {
     // Ktor server
+    implementation(ktorLibs.server.swagger)
     implementation(ktorLibs.serialization.kotlinx.json)
     implementation(ktorLibs.server.auth)
     implementation(ktorLibs.server.auth.jwt)

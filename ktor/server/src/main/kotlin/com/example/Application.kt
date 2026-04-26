@@ -24,6 +24,7 @@ import com.example.transactions.transactionRoutes
 import io.lettuce.core.RedisClient
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
+import io.ktor.server.plugins.swagger.swaggerUI
 import io.ktor.server.routing.routing
 import kotlinx.serialization.json.Json
 
@@ -51,6 +52,7 @@ fun Application.module() {
     val orderService = OrderService(dataSource, priceCache)
 
     routing {
+        swaggerUI(path = "swagger", swaggerFile = "swagger.yaml")
         healthRoutes(dataSource, redisClient)
         authRoutes(authService)
         portfolioRoutes(dataSource, priceCache)
