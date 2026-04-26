@@ -26,7 +26,10 @@ data class AppConfig(
             redis = RedisConfig(
                 host = env("REDIS_HOST", "localhost"),
                 port = env("REDIS_PORT", "6379").toInt(),
-                password = System.getenv("REDIS_PASSWORD"),
+                password = System.getenv("REDIS_PASSWORD").takeIf { !it.isNullOrBlank() },
+                streamName = env("REDIS_STREAM", "stream:quotes:v1"),
+                consumerGroup = env("REDIS_CONSUMER_GROUP", "cg:ktor:quotes"),
+                consumerName = env("REDIS_CONSUMER_NAME", "ktor-instance-1"),
             ),
         )
 
@@ -58,8 +61,11 @@ data class RedisConfig(
     val host: String,
     val port: Int,
     val password: String?,
+    val streamName: String,
+    val consumerGroup: String,
+    val consumerName: String,
 ) {
-    val uri: String get() = if (password != null)
+    val uri: String get() = if (!password.isNullOrBlank())
         "redis://:$password@$host:$port"
     else
         "redis://$host:$port"
