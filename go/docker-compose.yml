@@ -1,0 +1,63 @@
+###############################################################################
+# DEV-стенд: мок C-драйвера + коллектор котировок
+#
+# Запуск:          docker compose up --build
+# Только тесты:    docker compose --profile test run --rm test
+# Остановка:       docker compose down -v
+###############################################################################
+
+services:
+
+  # ── Прогон тестов ──────────────────────────────────────────────────────────
+  # Собирает образ, запускает go test и завершается.
+  # Не стартует вместе с основными сервисами (profile: test).
+  test:
+    build:
+      context: .
+      target: tester
+    profiles: ["test"]
+
+  # ── Мок C-драйвера ─────────────────────────────────────────────────────────
+  # Симулирует блочное устройство: создаёт именованный пайп /shared/quotes
+  # и непрерывно пишет в него бинарные структуры {ticker[8], float32}.
+  #
+  # Когда реальный C-драйвер будет готов — используй docker-compose.cdriver.yml:
+  #   docker compose -f docker-compose.yml -f docker-compose.cdriver.yml up collector
+  mock-driver:
+    build:
+      context: .
+      target: mock-driver
+    volumes:
+      - quotes-pipe:/shared
+    # mkfifo создаёт FIFO; open() на запись блокируется до появления читателя.
+    entrypoint: ["sh", "-c", "mkfifo /shared/quotes 2>/dev/null || true && exec /app/mock-driver > /shared/quotes"]
+    environment:
+      MOCK_TICKERS: ${MOCK_TICKERS:-SBER,GAZP,YNDX,LKOH,ROSN}
+      MOCK_INTERVAL_MS: ${MOCK_INTERVAL_MS:-100}
+    restart: on-failure
+
+  # ── Коллектор котировок ────────────────────────────────────────────────────
+  # Читает поток из /shared/quotes (FIFO), логирует в stdout.
+  # В следующих этапах здесь появятся Redis и ClickHouse.
+  collector:
+    build:
+      context: .
+      target: collector
+    volumes:
+      - quotes-pipe:/shared
+    env_file:
+      - path: .env
+        required: false   # .env опционален; переменные можно задать иначе
+    environment:
+      DRIVER_DEVICE_PATH: /shared/quotes
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    # Ждём появления FIFO перед запуском (mock-driver создаёт его первым).
+    entrypoint: ["sh", "-c", "until [ -p /shared/quotes ]; do sleep 0.1; done && exec /app/quotes-collector"]
+    depends_on:
+      - mock-driver
+    restart: on-failure
+
+volumes:
+  # Разделяемый том для именованного пайпа между mock-driver и collector.
+  # При подключении реального C-драйвера этот том больше не нужен.
+  quotes-pipe:

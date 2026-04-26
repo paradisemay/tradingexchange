@@ -1,0 +1,25 @@
+###############################################################################
+# Override-файл для подключения реального C-драйвера.
+#
+# Использование (когда драйвер загружен на хосте через insmod):
+#   docker compose -f docker-compose.yml -f docker-compose.cdriver.yml up collector
+#
+# Что происходит:
+#   - mock-driver отключается (profile "disabled" → не стартует)
+#   - collector монтирует устройство /dev/quotes с хоста напрямую
+#   - shared volume больше не нужен, entrypoint упрощается
+###############################################################################
+
+services:
+
+  mock-driver:
+    # Переводим в несуществующий профиль — сервис не поднимается.
+    profiles: ["disabled"]
+
+  collector:
+    volumes: []          # убираем shared FIFO-том
+    devices:
+      - /dev/quotes:/dev/quotes   # устройство хоста → контейнер
+    environment:
+      DRIVER_DEVICE_PATH: /dev/quotes
+    entrypoint: ["/app/quotes-collector"]   # больше не нужно ждать FIFO

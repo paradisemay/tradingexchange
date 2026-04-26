@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package quotes.v1;
+
+option go_package = "github.com/tradingexchange/proto/quotes/v1;quotesv1";
+
+message QuoteTick {
+  string ticker      = 1;
+  double price       = 2;
+  int64  timestamp_ms = 3; // Unix timestamp в миллисекундах (UTC)
+}
