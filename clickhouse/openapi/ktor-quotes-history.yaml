@@ -1,0 +1,93 @@
+openapi: "3.0.3"
+info:
+  title: Quotes History API Contract
+  version: "1.0.0"
+  description: Ktor-facing contract for reading historical quote data prepared from ClickHouse.
+servers:
+  - url: http://localhost:8080
+    description: Local Ktor backend
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    QuotePoint:
+      type: object
+      required: [time, price]
+      properties:
+        time: { type: string, format: date-time }
+        price: { type: number, format: double }
+    Candle:
+      type: object
+      required: [time, open, high, low, close, volume]
+      properties:
+        time: { type: string, format: date-time }
+        open: { type: number, format: double }
+        high: { type: number, format: double }
+        low: { type: number, format: double }
+        close: { type: number, format: double }
+        volume: { type: integer, format: int64 }
+    QuoteSummary:
+      type: object
+      required: [minPrice, maxPrice, firstPrice, lastPrice, points]
+      properties:
+        minPrice: { type: number, format: double }
+        maxPrice: { type: number, format: double }
+        firstPrice: { type: number, format: double }
+        lastPrice: { type: number, format: double }
+        points: { type: integer, format: int64 }
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/quotes/history:
+    get:
+      tags: [Quotes]
+      summary: Historical raw quote points for line chart
+      parameters:
+        - { name: symbol, in: query, required: true, schema: { type: string, example: "SBER" } }
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: limit, in: query, required: false, schema: { type: integer, default: 1000, maximum: 10000 } }
+      responses:
+        "200":
+          description: Raw points ordered by time
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/QuotePoint" }
+  /api/v1/quotes/candles:
+    get:
+      tags: [Quotes]
+      summary: One-minute OHLC candles
+      parameters:
+        - { name: symbol, in: query, required: true, schema: { type: string, example: "SBER" } }
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: interval, in: query, required: false, schema: { type: string, enum: ["1m"], default: "1m" } }
+        - { name: limit, in: query, required: false, schema: { type: integer, default: 1000, maximum: 10000 } }
+      responses:
+        "200":
+          description: Candles ordered by bucket
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Candle" }
+  /api/v1/quotes/summary:
+    get:
+      tags: [Quotes]
+      summary: Range summary for chart scaling and metadata
+      parameters:
+        - { name: symbol, in: query, required: true, schema: { type: string, example: "SBER" } }
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+      responses:
+        "200":
+          description: Aggregated range summary
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QuoteSummary" }
+
