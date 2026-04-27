@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS trading.quotes_raw
 ENGINE = MergeTree
 PARTITION BY toYYYYMM(event_time)
 ORDER BY (symbol, event_time)
-TTL event_time + INTERVAL 180 DAY
+TTL toDateTime(event_time) + INTERVAL 180 DAY
 SETTINGS index_granularity = 8192;
 
 CREATE TABLE IF NOT EXISTS trading.quotes_ohlc_1m
@@ -59,4 +59,3 @@ FROM trading.quotes_ohlc_1m
 GROUP BY
     symbol,
     bucket;
-
