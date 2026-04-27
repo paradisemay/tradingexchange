@@ -1,0 +1,115 @@
+Mini-SRS: Модуль сбора метрик, логов и трейсинга (Уровень Backend / DevOps)
+Команда модуля:
+Тимлид: stella_stt
+Саппорт (подчиненный): Bandz
+1. Описание задачи "от заказчика"
+В нашей высоконагруженной торговой экосистеме, состоящей из множества узлов (C-драйвер, Go-сервис, Ktor, базы данных), критически важно централизованно отслеживать состояние системы в реальном времени. Модуль Телеметрии должен быть построен на базе OpenTelemetry (согласно требованиям проекта). Он должен собирать три столпа наблюдаемости (observability): логи (что произошло), метрики (нагрузка, CPU, RPS) и распределенные трейсы (путь конкретного запроса от клиента через Ktor в базу или путь котировки от Go до Redis). Нам нужен инструмент, который позволит разработчикам и девопсам быстро находить "узкие горлышки", отлаживать падения (например, если терминал тормозит у части из 10 000 клиентов) и мониторить стабильность системы.
+2. Техническая реализация
+Модуль телеметрии это просто центральная точка, куда все шлют свои метрики/логи/трейсы, чтобы потом это можно было смотреть в одном месте.
+У нас есть OpenTelemetry Collector это по сути приемник + маршрутизатор.
+Все сервисы (в нашем случае ktor потому что go пока нет) шлют туда данные, а он уже раскидывает их по разным хранилищам.
+Redis сам ничего не шлет мы снимаем с него метрики через exporter и также PostgreSQL через postgres-exporter
+
+Что где хранится
+Метрики -> Prometheus
+ (RPS, latency, Redis нагрузка, метрики PostgreSQL и т.д.)
+Трейсы ->  Tempo
+ (цепочки запросов внутри Ktor + Redis interaction)
+Логи ->  Loki
+ (все логи Ktor, можно искать по traceId)
+Grafana просто UI, где графики/трейсы/поиск логов
+
+Картинка:
+
+
+Все поднимается через docker-compose, в одной сети:
+otel-collector
+prometheus
+grafana
+tempo
+loki
+promtail
+redis-exporter
+postgres-exporter
+3. Контракты взаимодействия (Data Contracts)
+(Как именно другие модули будут отправлять вам данные?)
+1. Протоколы:  Collector принимает данные через OTLP:
+HTTP: http://otel-collector:4318
+
+2. Интеграция с Ktor (weebat): Какие библиотеки им нужно подключить, чтобы автоматически слать трейсы и спаны (spans)? Какие обязательные теги (labels) должны быть у логов (например, user_id, service_name)?
+ @Ktor вставьте это в свою иишку:
+
+# OpenTelemetry integration
+Добавить зависимости:
+- opentelemetry-sdk
+- opentelemetry-exporter-otlp
+- opentelemetry-instrumentation-ktor
+Переменные окружения:
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+OTEL_SERVICE_NAME=ktor-backend
+Что автоматически собираем:
+- HTTP requests (latency, status codes)
+- ошибки (4xx, 5xx)
+- WebSocket connections
+Обязательные атрибуты:
+- service.name=ktor-backend
+- http.route
+- http.method
+- http.status_code
+- traceId (прокидывается в ответы API)
+- messaging.system=redis
+Кастомные метрики:
+- http_requests_total
+- http_request_duration
+- ws_active_connections
+- redis_reconnect_count
+- db_transaction_duration (если есть)
+Логи:
+- формат JSON
+- обязательно поля:
+  timestamp, level, service_name, message, traceId
+
+3. Интеграция с БД/Брокерами: Как собираем метрики с PostgreSQL, ClickHouse и Redis (через сторонние exporters)?
+@REDIS  вставьте это в свою иишку:
+# Redis telemetry
+Поднимается отдельный контейнер:
+redis-exporter
+Endpoint:
+redis-exporter:9121/metrics
+
+Prometheus забирает метрики с этого endpoint.
+Минимальный набор метрик:
+- redis_up
+- redis_memory_used_bytes
+- redis_connected_clients
+- redis_instantaneous_ops_per_sec
+- redis_commands_processed_total
+- redis_keyspace_hits_total
+- redis_keyspace_misses_total
+- redis_evicted_keys_total
+
+@Postgres  вставьте это в свою иишку:
+# PostgreSQL telemetry
+
+Endpoint:
+postgres-exporter:9187/metrics
+Минимальный набор метрик:
+- pg_up 
+- pg_stat_database_numbackends
+- pg_stat_database_xact_commit / rollback
+- pg_locks_count 
+- pg_stat_activity_count 
+- pg_database_size_bytes
+
+5. Критерии готовности (Definition of Done)
+Весь стек телеметрии поднимается через doker compose
+OpenTelemetry Collector принимает данные от Ktor
+Метрики Redis доступны через redis-exporter в Prometheus
+Метрики PostgreSQL доступны через postgres-exporter в Prometheus
+В Grafana отображаются дашборды по Ktor (RPS, latency, ошибки)
+В Grafana отображаются метрики Redis (нагрузка, память, клиенты)
+В Grafana отображаются метрики PostgreSQL (соединения, блокировки, транзакции)
+В Tempo можно открыть trace одного HTTP запроса
+В trace видно цепочку: Ktor → Redis → PostgreSQL
+Логи Ktor централизованы в Loki и доступны по traceId
+При тестовых запросах данные корректно появляются во всех трёх слоях (metrics/traces/logs)

@@ -1,0 +1,214 @@
+{
+  "uid": "telemetry-overview",
+  "title": "Telemetry Overview",
+  "tags": ["telemetry", "broker"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "editable": true,
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "Quick Links",
+      "gridPos": {"x": 0, "y": 0, "w": 24, "h": 4},
+      "options": {
+        "mode": "markdown",
+        "content": "### Telemetry stack\n- Prometheus: data source for exporter metrics and Ktor signals\n- Loki: log search by `traceId`\n- Tempo: distributed traces from Ktor OTLP\n\n### Expected focus metrics\n- Redis: `redis_up`, `redis_memory_used_bytes`, `redis_connected_clients`\n- PostgreSQL: `pg_up`, `pg_stat_database_numbackends`, `pg_locks_count`\n- Ktor: `http_requests_total`, `http_request_duration`, `ws_active_connections`, `redis_reconnect_count`"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Redis Up",
+      "gridPos": {"x": 0, "y": 4, "w": 6, "h": 6},
+      "datasource": "Prometheus",
+      "targets": [
+        {"refId": "A", "expr": "redis_up"}
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 1,
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "green", "value": 1}
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "PostgreSQL Up",
+      "gridPos": {"x": 6, "y": 4, "w": 6, "h": 6},
+      "datasource": "Prometheus",
+      "targets": [
+        {"refId": "A", "expr": "pg_up"}
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 1,
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "green", "value": 1}
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Redis Memory Used",
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 6},
+      "datasource": "Prometheus",
+      "targets": [
+        {"refId": "A", "expr": "redis_memory_used_bytes"}
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {"mode": "palette-classic"}
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Redis Connected Clients",
+      "gridPos": {"x": 0, "y": 10, "w": 8, "h": 7},
+      "datasource": "Prometheus",
+      "targets": [
+        {"refId": "A", "expr": "redis_connected_clients"}
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {"mode": "palette-classic"}
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "PostgreSQL Backends",
+      "gridPos": {"x": 8, "y": 10, "w": 8, "h": 7},
+      "datasource": "Prometheus",
+      "targets": [
+        {"refId": "A", "expr": "pg_stat_database_numbackends"}
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {"mode": "palette-classic"}
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "PostgreSQL Locks",
+      "gridPos": {"x": 16, "y": 10, "w": 8, "h": 7},
+      "datasource": "Prometheus",
+      "targets": [
+        {"refId": "A", "expr": "pg_locks_count"}
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {"mode": "palette-classic"}
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Ktor Request Rate",
+      "gridPos": {"x": 0, "y": 17, "w": 12, "h": 7},
+      "datasource": "Prometheus",
+      "targets": [
+        {"refId": "A", "expr": "sum(rate(http_requests_total[5m]))"}
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {"mode": "palette-classic"}
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Ktor Active WebSockets",
+      "gridPos": {"x": 12, "y": 17, "w": 12, "h": 7},
+      "datasource": "Prometheus",
+      "targets": [
+        {"refId": "A", "expr": "ws_active_connections"}
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {"mode": "palette-classic"}
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Ktor Redis Reconnects",
+      "gridPos": {"x": 0, "y": 24, "w": 12, "h": 7},
+      "datasource": "Prometheus",
+      "targets": [
+        {"refId": "A", "expr": "redis_reconnect_count"}
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {"mode": "palette-classic"}
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Ktor Transaction Duration",
+      "gridPos": {"x": 12, "y": 24, "w": 12, "h": 7},
+      "datasource": "Prometheus",
+      "targets": [
+        {"refId": "A", "expr": "http_request_duration"}
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {"mode": "palette-classic"}
+        },
+        "overrides": []
+      }
+    }
+  ]
+}
