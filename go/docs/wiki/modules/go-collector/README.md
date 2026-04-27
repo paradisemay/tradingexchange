@@ -49,7 +49,9 @@ internal/
   publisher/
     publisher.go      ← интерфейс Publisher + LogPublisher (мок → stdout)
   batcher/
-    batcher.go        ← интерфейс Batcher + LogBatcher (мок → stdout)
+    batcher.go        ← интерфейс Batcher + LogBatcher + ClickHouseBatcher
+    batcher_test.go   ← unit-тесты flush/retry/валидации
+    clickhouse_integration_test.go ← testcontainers-go тест с реальным ClickHouse
 ```
 
 ---
@@ -62,8 +64,19 @@ internal/
 | `LOG_LEVEL` | нет | `info` | Уровень логирования: debug / info / warn / error |
 | `MOCK_TICKERS` | нет | `SBER,GAZP,YNDX,LKOH,ROSN` | Тикеры mock-driver (только dev) |
 | `MOCK_INTERVAL_MS` | нет | `100` | Интервал генерации тика mock-driver, мс (только dev) |
+| `CLICKHOUSE_ENABLED` | нет | `false` | Включает реальную запись в ClickHouse вместо `LogBatcher` |
+| `CLICKHOUSE_ADDR` | нет | `localhost:9000` | Native TCP endpoint ClickHouse |
+| `CLICKHOUSE_DATABASE` | нет | `trading` | База ClickHouse |
+| `CLICKHOUSE_USER` | нет | `trading_app` | Пользователь ClickHouse |
+| `CLICKHOUSE_PASSWORD` | да, если enabled | — | Пароль ClickHouse из окружения |
+| `CLICKHOUSE_TABLE` | нет | `trading.quotes_raw` | Целевая таблица для batch insert |
+| `CLICKHOUSE_BATCH_SIZE` | нет | `10000` | Максимум записей в батче |
+| `CLICKHOUSE_FLUSH_INTERVAL_MS` | нет | `200` | Принудительный flush по таймеру |
+| `CLICKHOUSE_INSERT_TIMEOUT_MS` | нет | `5000` | Timeout одной попытки insert |
+| `CLICKHOUSE_RETRY_INITIAL_MS` | нет | `100` | Начальный retry backoff |
+| `CLICKHOUSE_RETRY_MAX_MS` | нет | `2000` | Максимальный retry backoff |
 
-Переменные Redis и ClickHouse добавятся в этапах 2–3. Шаблон: `.env.example`.
+Redis publisher пока остается отдельным этапом. Шаблон переменных: `.env.example`.
 
 ---
 
@@ -73,7 +86,7 @@ internal/
 
 | Stage | База | Назначение |
 |---|---|---|
-| `deps` | golang:1.23-alpine | кэш `go mod download` |
+| `deps` | golang:1.26-alpine | кэш `go mod download` |
 | `builder` | deps | компиляция бинарей |
 | `tester` | deps + gcc/musl-dev | `go test -race ./...` |
 | `collector` | alpine:3.21 | production-образ коллектора |
@@ -108,10 +121,15 @@ devices:
 | `TestReader_Run` | driver/reader_test.go | публичный метод Run с временным файлом |
 | `TestReader_StopsOnContextCancel` | driver/reader_test.go | graceful shutdown через io.Pipe + ctx cancel |
 | `TestReader_DropsWhenChannelFull` | driver/reader_test.go | drop тиков при полном канале, не блокировка |
+| `TestClickHouseBatcherFlushesOnBatchSize` | batcher/batcher_test.go | flush при достижении размера батча |
+| `TestClickHouseBatcherFlushesOnClose` | batcher/batcher_test.go | graceful flush при shutdown |
+| `TestClickHouseBatcherTimedFlush` | batcher/batcher_test.go | flush по таймеру |
+| `TestClickHouseBatcherRetriesTemporaryFailure` | batcher/batcher_test.go | retry временной ошибки |
+| `TestClickHouseBatcherIntegration` | batcher/clickhouse_integration_test.go | реальная вставка через testcontainers-go |
 
 **Покрытие:** `internal/driver` — 85.2%
 
-Запуск: `make test` (локально) или `make docker-test` (в Docker с race detector).
+Запуск: `make test` (локально), `make test-race` (локально с CGO/C compiler) или `make docker-test` (в Docker с race detector).
 
 ---
 
@@ -124,5 +142,5 @@ devices:
 - [x] Запуск одной командой: `make docker-run` (без реального C-драйвера)
 - [x] Переключение на реальный C-драйвер: `make docker-run-cdriver` (без изменения кода)
 - [ ] Redis publisher: XADD stream:quotes:v1, payload=Protobuf (этап 2)
-- [ ] ClickHouse batcher: батч ≤10k / flush 200ms, graceful flush (этап 3)
-- [ ] Интеграционные тесты через testcontainers-go (этапы 2–3)
+- [x] ClickHouse batcher: батч ≤10k / flush 200ms, graceful flush
+- [x] Интеграционный тест ClickHouse через testcontainers-go

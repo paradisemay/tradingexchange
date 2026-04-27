@@ -2,7 +2,7 @@
 
 ## Предварительные требования
 
-- Go 1.23+ (`/usr/local/go/bin/go version`)
+- Go 1.26+ (`go version`)
 - Docker + Docker Compose (для docker-режима)
 - Python 3 (опционально, для ручной генерации тестовых данных)
 
@@ -64,7 +64,9 @@ make docker-run-cdriver
 ## Тесты
 
 ```bash
-make test       # локально, с race detector
+make test       # локально
+make test-race  # локально с race detector, нужен CGO/C compiler
+make test-integration  # ClickHouse через testcontainers-go, нужен Docker
 make cover      # локально, с отчётом о покрытии по пакетам
 make docker-test  # в Docker-контейнере
 ```
@@ -94,6 +96,29 @@ DRIVER_DEVICE_PATH=/tmp/dev-quotes go run ./cmd/quotes-collector
 ### Включить debug-логирование
 ```bash
 LOG_LEVEL=debug DRIVER_DEVICE_PATH=... go run ./cmd/quotes-collector
+```
+
+### Включить запись в ClickHouse
+
+Сначала подними ClickHouse из соседнего модуля:
+
+```powershell
+cd C:\Users\yarik\GolandProjects\tradingexchange\clickhouse
+Copy-Item .env.example .env
+docker compose up -d
+```
+
+Затем запусти Go локально с тем же паролем:
+
+```powershell
+cd C:\Users\yarik\GolandProjects\tradingexchange\go
+$env:DRIVER_DEVICE_PATH="/dev/stdin"
+$env:CLICKHOUSE_ENABLED="true"
+$env:CLICKHOUSE_ADDR="localhost:9000"
+$env:CLICKHOUSE_DATABASE="trading"
+$env:CLICKHOUSE_USER="trading_app"
+$env:CLICKHOUSE_PASSWORD="<local password from clickhouse/.env>"
+go run ./cmd/mock-driver | go run ./cmd/quotes-collector
 ```
 
 ### Проверить покрытие тестами с HTML-отчётом

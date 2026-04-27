@@ -70,7 +70,7 @@ type Publisher interface {
 
 ---
 
-## 3. Go → ClickHouse  *(этап 3, ещё не реализован)*
+## 3. Go → ClickHouse
 
 **Транспорт:** native TCP, порт 9000 (`github.com/ClickHouse/clickhouse-go/v2`)
 
@@ -91,6 +91,8 @@ ORDER BY (symbol, event_time);
 - Принудительный flush каждые `CLICKHOUSE_FLUSH_INTERVAL_MS` мс (по умолчанию 200)
 - Одиночные INSERT запрещены
 - При graceful shutdown — дописать остаток буфера перед выходом
+- При временной ошибке insert выполняется retry с backoff от `CLICKHOUSE_RETRY_INITIAL_MS` до `CLICKHOUSE_RETRY_MAX_MS`
+- Одна попытка insert ограничена `CLICKHOUSE_INSERT_TIMEOUT_MS`
 
 **Интерфейс** (`internal/batcher/batcher.go`):
 ```go
@@ -100,7 +102,9 @@ type Batcher interface {
 }
 ```
 
-**Текущая реализация:** `LogBatcher` — логирует в stdout вместо вставки в ClickHouse.
+**Текущая реализация:** `ClickHouseBatcher` включается через `CLICKHOUSE_ENABLED=true`. Если флаг выключен, используется `LogBatcher` для локального dev-режима.
+
+**Ktor-facing чтение:** детали таблиц, sample SQL и OpenAPI-контракт лежат в `clickhouse/`.
 
 ---
 

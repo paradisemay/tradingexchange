@@ -1,7 +1,7 @@
 GO := $(shell which go 2>/dev/null || echo /usr/local/go/bin/go)
 DC := docker compose
 
-.PHONY: run run-pipe test cover build clean \
+.PHONY: run run-pipe test test-race test-integration cover build clean \
         docker-run docker-test docker-stop docker-run-cdriver
 
 # ── Локальный запуск (без Docker) ───────────────────────────────────────────
@@ -17,9 +17,17 @@ run:
 run-pipe:
 	$(GO) run ./cmd/mock-driver | DRIVER_DEVICE_PATH=/dev/stdin $(GO) run ./cmd/quotes-collector
 
-## test: юнит-тесты с race detector (локально)
+## test: юнит-тесты (локально)
 test:
+	$(GO) test -count=1 ./...
+
+## test-race: юнит-тесты с race detector (нужен CGO/C compiler)
+test-race:
 	$(GO) test -race -count=1 ./...
+
+## test-integration: интеграционный тест ClickHouse через testcontainers-go
+test-integration:
+	$(GO) test -tags=integration -count=1 ./internal/batcher
 
 ## cover: тесты с отчётом о покрытии (локально)
 cover:
