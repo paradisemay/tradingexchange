@@ -17,6 +17,8 @@ The service listens on `http://localhost:8081` by default.
 | `API_MOCK_PORT` | `8081` | Host port for the API mock/docs service |
 | `QUOTE_INTERVAL_MS` | `1000` | WebSocket quote event interval |
 | `MOCK_JWT` | `mock-access-token` | Token accepted by protected mock REST endpoints |
+| `MOCK_REFRESH_TOKEN` | `mock-refresh-token` | Refresh token returned by register/login |
+| `MOCK_REFRESH_TOKEN_ROTATED` | `mock-refresh-token-rotated` | Refresh token returned by refresh |
 
 ## Validate specs and examples
 
@@ -88,3 +90,15 @@ Expected server event:
 - Protected REST endpoint returns `401`: pass `Authorization: Bearer mock-access-token`.
 - Swagger UI is blank: the UI HTML loads Swagger assets from CDN, so browser network access may be needed. Raw specs are still available at `/docs/openapi.yaml` and `/docs/asyncapi.yaml`.
 - WebSocket connects but no events arrive: send a `subscribe` message first; subscriptions are not automatic.
+
+## Security Checks
+
+Before sharing a branch:
+
+```powershell
+npm run validate
+npm run smoke
+docker compose config
+```
+
+When npm dependencies are added, also run `npm audit --audit-level=moderate`.

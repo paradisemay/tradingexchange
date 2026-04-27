@@ -29,6 +29,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
+import java.util.concurrent.TimeUnit
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -51,7 +52,7 @@ object AppProvidesModule {
     @Singleton
     @Named("authClient")
     fun provideAuthClient(): OkHttpClient =
-        OkHttpClient.Builder()
+        baseHttpClient()
             .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC })
             .build()
 
@@ -59,7 +60,7 @@ object AppProvidesModule {
     @Singleton
     @Named("mainClient")
     fun provideMainClient(authInterceptor: AuthInterceptor, authenticator: TokenAuthenticator): OkHttpClient =
-        OkHttpClient.Builder()
+        baseHttpClient()
             .addInterceptor(authInterceptor)
             .authenticator(authenticator)
             .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC })
@@ -91,6 +92,13 @@ object AppProvidesModule {
             .client(client)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
+
+    private fun baseHttpClient(): OkHttpClient.Builder =
+        OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .writeTimeout(20, TimeUnit.SECONDS)
+            .callTimeout(30, TimeUnit.SECONDS)
 }
 
 @Module

@@ -34,10 +34,17 @@ ui/*            Compose screens and ViewModels
 
 ## Backend Defaults
 
-Debug builds use API mock:
+Debug builds read API URLs from `API_BASE_URL` and `WS_BASE_URL`.
+Default values are optimized for physical-device debugging with `adb reverse`:
 
 ```text
-http://10.0.2.2:8081/
+http://127.0.0.1:8081/
 ```
 
-The emulator uses `10.0.2.2` to reach the developer machine. Use `localhost` only from the host OS, not inside the emulator.
+The emulator uses `10.0.2.2` to reach the developer machine. Pass Gradle property overrides when building for emulator or LAN.
+
+## ADR And Planning
+
+- `Android Kotlin/plan.md` records decomposition, next tasks and Conventional Commits policy.
+- `docs/wiki/modules/android-kotlin/adr/` stores architecture decision records.
+- `docs/wiki/modules/android-kotlin/security.md` stores security rules and local checks.

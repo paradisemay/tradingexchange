@@ -49,3 +49,11 @@ API/
 - `http://localhost:8081/docs/openapi.yaml` - raw OpenAPI.
 - `http://localhost:8081/docs/asyncapi.yaml` - raw AsyncAPI.
 - `ws://localhost:8081/api/v1/quotes/ws?accessToken=mock-access-token` - WebSocket mock.
+
+## ADR And Planning
+
+- `API/plan.md` records the current decomposition, next tasks and Conventional Commits policy.
+- `docs/wiki/modules/api/adr/` stores architecture decision records.
+- `docs/wiki/modules/api/security.md` stores security rules and early checks.
+
+Update these files together with code and specs when a decision changes.

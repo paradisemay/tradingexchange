@@ -27,3 +27,22 @@ npm run smoke
 ```
 
 `npm run smoke` expects the mock server to be running at `http://localhost:8081`.
+
+## Configuration
+
+Runtime settings come from environment variables. When a new variable is added, update `.env.example`.
+
+```text
+API_MOCK_PORT=8081
+QUOTE_INTERVAL_MS=1000
+MOCK_JWT=mock-access-token
+MOCK_REFRESH_TOKEN=mock-refresh-token
+MOCK_REFRESH_TOKEN_ROTATED=mock-refresh-token-rotated
+```
+
+## Planning And Wiki
+
+- `plan.md` tracks module tasks and commit policy.
+- `docs/wiki/modules/api/` contains Obsidian-ready wiki pages.
+- `docs/wiki/modules/api/adr/` contains ADRs for architecture decisions.
+- `docs/wiki/modules/api/security.md` contains local security rules and checks.

@@ -1,6 +1,7 @@
 .gradle/
 build/
 local.properties
+.env
 *.iml
 
 app/build/

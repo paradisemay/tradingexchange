@@ -10,6 +10,8 @@ Current unit tests cover:
 - Safe enum mapping.
 - Basic network error mapping.
 
+Target coverage for new domain/data code is at least 80%. The current MVP has focused mapper/error tests; the next iteration should add ViewModel and repository tests plus a coverage report task before enforcing the threshold in CI.
+
 Run:
 
 ```powershell

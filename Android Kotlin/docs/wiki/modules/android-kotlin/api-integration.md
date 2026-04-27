@@ -36,7 +36,7 @@ The refresh path is protected by a `Mutex` to avoid multiple parallel refresh ca
 Endpoint in debug:
 
 ```text
-ws://10.0.2.2:8081/api/v1/quotes/ws
+ws://127.0.0.1:8081/api/v1/quotes/ws
 ```
 
 The app uses query-token fallback:
@@ -44,6 +44,8 @@ The app uses query-token fallback:
 ```text
 ?accessToken=<token>
 ```
+
+`API_BASE_URL` and `WS_BASE_URL` are build-time configuration values. They can be provided through Gradle properties or environment variables and must not be changed by editing source for each developer machine.
 
 Client commands:
 

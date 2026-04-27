@@ -4,12 +4,18 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const requiredFiles = [
+  'plan.md',
   'docs/api/openapi.yaml',
   'docs/api/asyncapi.yaml',
   'docs/wiki/modules/api/README.md',
   'docs/wiki/modules/api/contracts.md',
   'docs/wiki/modules/api/runbook.md',
-  'docs/wiki/modules/api/mock-server.md'
+  'docs/wiki/modules/api/mock-server.md',
+  'docs/wiki/modules/api/security.md',
+  'docs/wiki/modules/api/adr/README.md',
+  'docs/wiki/modules/api/adr/ADR-0001-spec-and-mock-module.md',
+  'docs/wiki/modules/api/adr/ADR-0002-openapi-and-asyncapi-split.md',
+  'docs/wiki/modules/api/adr/ADR-0003-environment-configuration.md'
 ];
 
 const checks = [];
@@ -21,6 +27,7 @@ for (const file of requiredFiles) {
 
 const openapi = await readFile(join(root, 'docs/api/openapi.yaml'), 'utf8');
 const asyncapi = await readFile(join(root, 'docs/api/asyncapi.yaml'), 'utf8');
+const envExample = await readFile(join(root, '.env.example'), 'utf8');
 
 checks.push(['OpenAPI version is 3.1.0', openapi.includes('openapi: 3.1.0')]);
 checks.push(['OpenAPI contains auth register', openapi.includes('/api/v1/auth/register:')]);
@@ -30,6 +37,7 @@ checks.push(['OpenAPI contains current Ktor 422/503 errors', openapi.includes('"
 checks.push(['AsyncAPI version is 2.6.0', asyncapi.includes('asyncapi: 2.6.0')]);
 checks.push(['AsyncAPI contains quotes WebSocket channel', asyncapi.includes('/api/v1/quotes/ws:')]);
 checks.push(['AsyncAPI contains subscribe/unsubscribe/quote', asyncapi.includes('SubscribeCommand') && asyncapi.includes('UnsubscribeCommand') && asyncapi.includes('QuoteEvent')]);
+checks.push(['Env example contains mock runtime vars', ['API_MOCK_PORT', 'QUOTE_INTERVAL_MS', 'MOCK_JWT', 'MOCK_REFRESH_TOKEN', 'MOCK_REFRESH_TOKEN_ROTATED'].every((name) => envExample.includes(name))]);
 
 const examplesDir = join(root, 'docs/api/examples');
 const exampleFiles = (await readdir(examplesDir)).filter((name) => name.endsWith('.json'));

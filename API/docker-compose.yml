@@ -9,6 +9,8 @@ services:
       API_MOCK_PORT: 8081
       QUOTE_INTERVAL_MS: ${QUOTE_INTERVAL_MS:-1000}
       MOCK_JWT: ${MOCK_JWT:-mock-access-token}
+      MOCK_REFRESH_TOKEN: ${MOCK_REFRESH_TOKEN:-mock-refresh-token}
+      MOCK_REFRESH_TOKEN_ROTATED: ${MOCK_REFRESH_TOKEN_ROTATED:-mock-refresh-token-rotated}
     ports:
       - "${API_MOCK_PORT:-8081}:8081"
     healthcheck:

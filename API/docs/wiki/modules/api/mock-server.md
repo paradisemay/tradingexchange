@@ -19,8 +19,8 @@ No npm dependencies are required at runtime.
 
 The mock supports:
 
-- auth endpoints with static mock tokens;
-- protected REST endpoints that accept `Authorization: Bearer mock-access-token`;
+- auth endpoints with environment-configured mock tokens;
+- protected REST endpoints that accept `Authorization: Bearer <MOCK_JWT>`;
 - Ktor-compatible response fields;
 - basic validation errors;
 - in-memory order and transaction insertion after `POST /api/v1/orders`.
@@ -37,8 +37,10 @@ Endpoint:
 
 Accepted auth:
 
-- `Authorization: Bearer mock-access-token`;
-- `?accessToken=mock-access-token`.
+- `Authorization: Bearer <MOCK_JWT>`;
+- `?accessToken=<MOCK_JWT>`.
+
+Default local value is `mock-access-token`. Override it through `.env` or Docker environment.
 
 Client messages:
 

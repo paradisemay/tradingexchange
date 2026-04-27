@@ -8,6 +8,8 @@ import { fileURLToPath, URL } from 'node:url';
 const PORT = Number(process.env.API_MOCK_PORT || 8081);
 const QUOTE_INTERVAL_MS = Number(process.env.QUOTE_INTERVAL_MS || 1000);
 const MOCK_JWT = process.env.MOCK_JWT || 'mock-access-token';
+const MOCK_REFRESH_TOKEN = process.env.MOCK_REFRESH_TOKEN || 'mock-refresh-token';
+const MOCK_REFRESH_TOKEN_ROTATED = process.env.MOCK_REFRESH_TOKEN_ROTATED || 'mock-refresh-token-rotated';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const DOCS_DIR = join(ROOT, 'docs');
 
@@ -168,14 +170,14 @@ async function handleAuth(req, res, url) {
     return sendJson(res, 201, {
       userId: '8e2f8d1a-1d50-4fb3-b3ea-2f88d7cbb2b1',
       accessToken: MOCK_JWT,
-      refreshToken: 'mock-refresh-token'
+      refreshToken: MOCK_REFRESH_TOKEN
     });
   }
   if (url.pathname === '/api/v1/auth/login' && req.method === 'POST') {
-    return sendJson(res, 200, { accessToken: MOCK_JWT, refreshToken: 'mock-refresh-token' });
+    return sendJson(res, 200, { accessToken: MOCK_JWT, refreshToken: MOCK_REFRESH_TOKEN });
   }
   if (url.pathname === '/api/v1/auth/refresh' && req.method === 'POST') {
-    return sendJson(res, 200, { accessToken: MOCK_JWT, refreshToken: 'mock-refresh-token-rotated' });
+    return sendJson(res, 200, { accessToken: MOCK_JWT, refreshToken: MOCK_REFRESH_TOKEN_ROTATED });
   }
   if (url.pathname === '/api/v1/auth/logout' && req.method === 'POST') {
     if (!isRestAuthorized(req)) {
