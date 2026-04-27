@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ─── Stage 1: зависимости ────────────────────────────────────────────────────
-FROM golang:1.23-alpine AS deps
+FROM golang:1.26-alpine AS deps
 WORKDIR /app
 COPY go.mod ./
 RUN go mod download
@@ -15,7 +15,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" \
       -o /bin/mock-driver ./cmd/mock-driver
 
 # ─── Stage 3: прогон тестов (используется только в CI / make docker-test) ────
-# golang:1.23-alpine не содержит gcc, а флаг -race требует CGO.
+# golang:1.26-alpine не содержит gcc, а флаг -race требует CGO.
 # Ставим минимальный набор инструментов компилятора.
 FROM deps AS tester
 RUN apk add --no-cache gcc musl-dev

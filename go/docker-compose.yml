@@ -51,10 +51,24 @@ services:
     environment:
       DRIVER_DEVICE_PATH: /shared/quotes
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      CLICKHOUSE_ENABLED: ${CLICKHOUSE_ENABLED:-false}
+      CLICKHOUSE_ADDR: ${CLICKHOUSE_ADDR:-host.docker.internal:9000}
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-trading}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-trading_app}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      CLICKHOUSE_TABLE: ${CLICKHOUSE_TABLE:-trading.quotes_raw}
+      CLICKHOUSE_BATCH_SIZE: ${CLICKHOUSE_BATCH_SIZE:-10000}
+      CLICKHOUSE_FLUSH_INTERVAL_MS: ${CLICKHOUSE_FLUSH_INTERVAL_MS:-200}
+      CLICKHOUSE_INSERT_TIMEOUT_MS: ${CLICKHOUSE_INSERT_TIMEOUT_MS:-5000}
+      CLICKHOUSE_RETRY_INITIAL_MS: ${CLICKHOUSE_RETRY_INITIAL_MS:-100}
+      CLICKHOUSE_RETRY_MAX_MS: ${CLICKHOUSE_RETRY_MAX_MS:-2000}
+      CLICKHOUSE_DIAL_TIMEOUT_MS: ${CLICKHOUSE_DIAL_TIMEOUT_MS:-5000}
     # Ждём появления FIFO перед запуском (mock-driver создаёт его первым).
     entrypoint: ["sh", "-c", "until [ -p /shared/quotes ]; do sleep 0.1; done && exec /app/quotes-collector"]
     depends_on:
       - mock-driver
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: on-failure
 
 volumes:

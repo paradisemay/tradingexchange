@@ -35,7 +35,30 @@ func main() {
 	quotes := make(chan model.Quote, 1000)
 
 	pub := publisher.NewLogPublisher(log)
-	bat := batcher.NewLogBatcher(log)
+	var bat batcher.Batcher
+	if cfg.ClickHouse.Enabled {
+		clickHouseBatcher, err := batcher.NewClickHouseBatcher(ctx, batcher.Config{
+			Addr:          cfg.ClickHouse.Addr,
+			Database:      cfg.ClickHouse.Database,
+			User:          cfg.ClickHouse.User,
+			Password:      cfg.ClickHouse.Password,
+			Table:         cfg.ClickHouse.Table,
+			BatchSize:     cfg.ClickHouse.BatchSize,
+			FlushInterval: cfg.ClickHouse.FlushInterval,
+			InsertTimeout: cfg.ClickHouse.InsertTimeout,
+			RetryInitial:  cfg.ClickHouse.RetryInitial,
+			RetryMax:      cfg.ClickHouse.RetryMax,
+			DialTimeout:   cfg.ClickHouse.DialTimeout,
+		}, log)
+		if err != nil {
+			log.Error("failed to connect clickhouse", "err", err)
+			os.Exit(1)
+		}
+		bat = clickHouseBatcher
+	} else {
+		log.Warn("clickhouse disabled, using log batcher")
+		bat = batcher.NewLogBatcher(log)
+	}
 
 	var wg sync.WaitGroup // аналог CountDownLatch
 

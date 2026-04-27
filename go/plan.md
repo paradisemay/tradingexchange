@@ -16,10 +16,11 @@
 - [ ] integration test через testcontainers-go
 
 ## Этап 3 — ClickHouse batcher (задача amsterdam121)
-- [ ] internal/batcher/clickhouse.go — батч ≤10k / flush 200ms
-- [ ] graceful flush на shutdown
-- [ ] integration test через testcontainers-go
+- [x] internal/batcher/clickhouse.go — батч ≤10k / flush 200ms
+- [x] graceful flush на shutdown
+- [x] integration test через testcontainers-go
 
 ## Этап 4 — Docker
 - [ ] Dockerfile (multi-stage)
 - [ ] docker-compose.yml (redis + clickhouse + collector)
+- [x] отдельный ClickHouse compose-модуль в `../clickhouse`
