@@ -1,0 +1,22 @@
+{
+  "ticker": "SBER",
+  "currency": "RUB",
+  "range": "1H",
+  "interval": "1m",
+  "candles": [
+    {
+      "timestampMs": 1775901000000,
+      "open": "251.5000",
+      "high": "253.0000",
+      "low": "251.0000",
+      "close": "252.0000"
+    },
+    {
+      "timestampMs": 1775901060000,
+      "open": "252.0000",
+      "high": "253.3000",
+      "low": "251.8000",
+      "close": "252.4200"
+    }
+  ]
+}

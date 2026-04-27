@@ -1,0 +1,15 @@
+{
+  "name": "tradingexchange-api-contract",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Spec, docs, REST mock and WebSocket mock for the trading exchange API module.",
+  "type": "module",
+  "scripts": {
+    "start": "node server/index.js",
+    "validate": "node scripts/validate.js",
+    "smoke": "node scripts/smoke.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

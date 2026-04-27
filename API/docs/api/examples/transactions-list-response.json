@@ -1,0 +1,13 @@
+{
+  "transactions": [
+    {
+      "id": "4fd67edb-9ac1-4d66-9f3d-39b0e9c0d9be",
+      "type": "BUY",
+      "ticker": "SBER",
+      "amount": "2520.0000",
+      "quantity": "10",
+      "createdAt": "2026-04-11T12:30:01.000Z"
+    }
+  ],
+  "nextCursor": "2026-04-11T12:30:01.000Z"
+}

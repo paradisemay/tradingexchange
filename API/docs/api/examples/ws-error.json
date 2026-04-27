@@ -1,0 +1,7 @@
+{
+  "type": "error",
+  "errorCode": "VALIDATION_ERROR",
+  "message": "Invalid WebSocket JSON frame",
+  "details": {},
+  "traceId": ""
+}

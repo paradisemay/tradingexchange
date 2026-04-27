@@ -1,0 +1,16 @@
+{
+  "ticker": "SBER",
+  "currency": "RUB",
+  "range": "1MIN",
+  "interval": "1s",
+  "points": [
+    {
+      "timestampMs": 1775901000000,
+      "price": "252.0000"
+    },
+    {
+      "timestampMs": 1775901001000,
+      "price": "252.4200"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "ticker": "SBER",
+  "side": "BUY",
+  "orderType": "MARKET",
+  "quantity": "10",
+  "limitPrice": null
+}

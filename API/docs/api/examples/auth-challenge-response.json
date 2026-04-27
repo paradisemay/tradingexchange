@@ -1,0 +1,4 @@
+{
+  "errorCode": "UNAUTHORIZED",
+  "message": "Token is missing or invalid"
+}
