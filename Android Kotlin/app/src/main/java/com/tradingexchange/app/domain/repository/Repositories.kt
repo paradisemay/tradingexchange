@@ -1,7 +1,11 @@
 package com.tradingexchange.app.domain.repository
 
 import com.tradingexchange.app.domain.model.CreateOrderCommand
+import com.tradingexchange.app.domain.model.CandleChart
+import com.tradingexchange.app.domain.model.ChartInterval
+import com.tradingexchange.app.domain.model.ChartRange
 import com.tradingexchange.app.domain.model.Instrument
+import com.tradingexchange.app.domain.model.LineChart
 import com.tradingexchange.app.domain.model.Order
 import com.tradingexchange.app.domain.model.Portfolio
 import com.tradingexchange.app.domain.model.Quote
@@ -26,6 +30,8 @@ interface BrokerRepository {
     suspend fun getProfile(): UserProfile
     suspend fun refreshPortfolio(): Portfolio
     suspend fun searchInstruments(query: String): List<Instrument>
+    suspend fun getLineChart(ticker: String, range: ChartRange, interval: ChartInterval): LineChart
+    suspend fun getCandleChart(ticker: String, range: ChartRange, interval: ChartInterval): CandleChart
     suspend fun createOrder(command: CreateOrderCommand): Order
     suspend fun refreshOrders(cursor: String? = null): ResultPage<Order>
     suspend fun refreshTransactions(cursor: String? = null): ResultPage<Transaction>

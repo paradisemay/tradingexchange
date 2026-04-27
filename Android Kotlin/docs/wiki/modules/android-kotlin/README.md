@@ -10,6 +10,7 @@ The Android Kotlin module is the native mobile trading terminal. It consumes onl
 - Session restore through DataStore.
 - Portfolio with cash, positions and live quote updates.
 - Instrument search.
+- Instrument chart screen with line and candlestick modes.
 - BUY/SELL order creation.
 - Orders history.
 - Transactions history.
@@ -30,6 +31,7 @@ data/repository repository implementations
 domain/model    domain models, enums, mappers
 domain/usecase  app use cases
 ui/*            Compose screens and ViewModels
+ui/chart        line/candlestick chart screen built with Compose Canvas
 ```
 
 ## Backend Defaults

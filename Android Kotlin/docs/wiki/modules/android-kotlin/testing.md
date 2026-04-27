@@ -5,6 +5,7 @@
 Current unit tests cover:
 
 - DTO to domain decimal conversion.
+- Line and candlestick chart decimal conversion.
 - Nullable current price mapping.
 - Current Ktor `lastPrice` instrument field.
 - Safe enum mapping.
@@ -25,6 +26,11 @@ Recommended next tests:
 - Login success and validation failure.
 - Portfolio cache-first load.
 - Instrument search empty and content states.
+- Chart load, chart type switch and range switch.
+- Chart interval switch for `1s`, `1m`, `1h`.
+- Chart short ranges `1m`/`1h` map to API `1MIN`/`1H`.
+- Chart invalid intervals are hidden and replaced with a recommended valid interval on range change.
+- Chart live quote update respects the selected interval bucket for line and candle charts.
 - Order create success and insufficient funds mapping.
 - WebSocket quote update propagated into portfolio state.
 

@@ -14,11 +14,16 @@ The API module is a spec, docs, mock and contract-test layer. It does not run pr
 - [x] ADR section for architectural decisions.
 - [x] Environment-variable based mock tokens and ports, mirrored in `.env.example`.
 - [x] Basic validation and smoke scripts.
+- [x] Chart history REST contract for line points and OHLC candles.
+- [x] Fine chart intervals: `1s`, `1m`, `1h` and existing coarser intervals.
+- [x] Short chart ranges: `1MIN` and `1H` alongside `1D`, `1W`, `1M`, `6M`, `1Y`.
+- [x] Chart interval validation and mock history from accumulated quote ticks.
 
 ## Next Small Tasks
 
 - [ ] Add generated Postman or Insomnia collection from `docs/api/openapi.yaml`.
 - [ ] Add contract tests against the real Ktor backend.
+- [ ] Align Ktor with `/api/v1/instruments/{ticker}/chart/line` and `/api/v1/instruments/{ticker}/chart/candles`.
 - [ ] Add CI job: validate specs, run smoke against mock container, publish docs artifacts.
 - [ ] Add security scanning in CI (`npm audit` when lockfile/dependencies are introduced, container image scan).
 - [ ] Keep every public API change paired with OpenAPI/AsyncAPI, examples, changelog and ADR updates when decisions change.

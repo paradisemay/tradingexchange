@@ -27,6 +27,20 @@ interface BrokerApi {
     @GET("api/v1/instruments")
     suspend fun instruments(@Query("query") query: String? = null): List<InstrumentDto>
 
+    @GET("api/v1/instruments/{ticker}/chart/line")
+    suspend fun lineChart(
+        @retrofit2.http.Path("ticker") ticker: String,
+        @Query("range") range: String,
+        @Query("interval") interval: String? = null,
+    ): LineChartResponseDto
+
+    @GET("api/v1/instruments/{ticker}/chart/candles")
+    suspend fun candleChart(
+        @retrofit2.http.Path("ticker") ticker: String,
+        @Query("range") range: String,
+        @Query("interval") interval: String? = null,
+    ): CandleChartResponseDto
+
     @POST("api/v1/orders")
     suspend fun createOrder(@Body body: CreateOrderRequestDto): OrderDto
 

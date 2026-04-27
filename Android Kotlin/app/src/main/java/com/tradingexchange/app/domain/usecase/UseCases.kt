@@ -1,6 +1,8 @@
 package com.tradingexchange.app.domain.usecase
 
 import com.tradingexchange.app.domain.model.CreateOrderCommand
+import com.tradingexchange.app.domain.model.ChartRange
+import com.tradingexchange.app.domain.model.ChartInterval
 import com.tradingexchange.app.domain.repository.AuthRepository
 import com.tradingexchange.app.domain.repository.BrokerRepository
 import com.tradingexchange.app.domain.repository.QuotesRepository
@@ -33,6 +35,16 @@ class RefreshPortfolioUseCase @Inject constructor(private val brokerRepository: 
 
 class SearchInstrumentsUseCase @Inject constructor(private val brokerRepository: BrokerRepository) {
     suspend operator fun invoke(query: String) = brokerRepository.searchInstruments(query)
+}
+
+class GetLineChartUseCase @Inject constructor(private val brokerRepository: BrokerRepository) {
+    suspend operator fun invoke(ticker: String, range: ChartRange, interval: ChartInterval) =
+        brokerRepository.getLineChart(ticker, range, interval)
+}
+
+class GetCandleChartUseCase @Inject constructor(private val brokerRepository: BrokerRepository) {
+    suspend operator fun invoke(ticker: String, range: ChartRange, interval: ChartInterval) =
+        brokerRepository.getCandleChart(ticker, range, interval)
 }
 
 class CreateOrderUseCase @Inject constructor(private val brokerRepository: BrokerRepository) {

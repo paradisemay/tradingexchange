@@ -1,8 +1,12 @@
 package com.tradingexchange.app.data.remote
 
 import com.tradingexchange.app.domain.model.Cash
+import com.tradingexchange.app.domain.model.Candle
+import com.tradingexchange.app.domain.model.CandleChart
 import com.tradingexchange.app.domain.model.CreateOrderCommand
 import com.tradingexchange.app.domain.model.Instrument
+import com.tradingexchange.app.domain.model.LineChart
+import com.tradingexchange.app.domain.model.LineChartPoint
 import com.tradingexchange.app.domain.model.Order
 import com.tradingexchange.app.domain.model.Portfolio
 import com.tradingexchange.app.domain.model.PortfolioPosition
@@ -35,6 +39,32 @@ fun PortfolioPositionDto.toDomain() = PortfolioPosition(
 )
 
 fun InstrumentDto.toDomain() = Instrument(ticker, name, currency, lotSize, isActive, lastPrice?.toMoney())
+
+fun LineChartResponseDto.toDomain() = LineChart(
+    ticker = ticker,
+    currency = currency,
+    range = range,
+    interval = interval,
+    points = points.map { it.toDomain() },
+)
+
+fun LineChartPointDto.toDomain() = LineChartPoint(timestampMs, price.toMoney())
+
+fun CandleChartResponseDto.toDomain() = CandleChart(
+    ticker = ticker,
+    currency = currency,
+    range = range,
+    interval = interval,
+    candles = candles.map { it.toDomain() },
+)
+
+fun CandleDto.toDomain() = Candle(
+    timestampMs = timestampMs,
+    open = open.toMoney(),
+    high = high.toMoney(),
+    low = low.toMoney(),
+    close = close.toMoney(),
+)
 
 fun CreateOrderCommand.toDto() = CreateOrderRequestDto(
     ticker = ticker,

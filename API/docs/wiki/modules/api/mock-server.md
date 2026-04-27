@@ -22,6 +22,7 @@ The mock supports:
 - auth endpoints with environment-configured mock tokens;
 - protected REST endpoints that accept `Authorization: Bearer <MOCK_JWT>`;
 - Ktor-compatible response fields;
+- chart line/candles endpoints with deterministic synthetic historical data;
 - basic validation errors;
 - in-memory order and transaction insertion after `POST /api/v1/orders`.
 

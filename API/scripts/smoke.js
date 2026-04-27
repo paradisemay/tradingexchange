@@ -32,6 +32,15 @@ await step('auth/refresh', () => request('POST', '/api/v1/auth/refresh', { refre
 await step('me', () => request('GET', '/api/v1/me', null, authHeaders));
 await step('portfolio', () => request('GET', '/api/v1/portfolio', null, authHeaders));
 await step('instruments', () => request('GET', '/api/v1/instruments?query=SBER', null, authHeaders));
+const quote = await step('websocket', () => websocketSmoke(wsUrl));
+assert(quote.type === 'quote' && quote.ticker === 'SBER', 'websocket receives SBER quote');
+const lineChart = await step('charts/line', () => request('GET', '/api/v1/instruments/SBER/chart/line?range=1MIN&interval=1s', null, authHeaders));
+assert(Array.isArray(lineChart.points) && lineChart.points.length > 0, 'line chart returns points');
+const hourLineChart = await step('charts/line-hour', () => request('GET', '/api/v1/instruments/SBER/chart/line?range=1H&interval=1m', null, authHeaders));
+assert(Array.isArray(hourLineChart.points) && hourLineChart.points.length > 0, 'hour line chart returns points');
+const candleChart = await step('charts/candles', () => request('GET', '/api/v1/instruments/SBER/chart/candles?range=1H&interval=1m', null, authHeaders));
+assert(Array.isArray(candleChart.candles) && candleChart.candles.length > 0, 'candles chart returns candles');
+await step('charts/invalid-interval', () => request('GET', '/api/v1/instruments/SBER/chart/line?range=1MIN&interval=1m', null, authHeaders, 400));
 await step('orders/create', () => request('POST', '/api/v1/orders', {
   ticker: 'SBER',
   side: 'BUY',
@@ -42,9 +51,6 @@ await step('orders/create', () => request('POST', '/api/v1/orders', {
 await step('orders/list', () => request('GET', '/api/v1/orders?limit=1', null, authHeaders));
 await step('transactions/list', () => request('GET', '/api/v1/transactions?limit=1', null, authHeaders));
 await step('auth/logout', () => request('POST', '/api/v1/auth/logout', { refreshToken: login.refreshToken }, authHeaders, 204));
-
-const quote = await step('websocket', () => websocketSmoke(wsUrl));
-assert(quote.type === 'quote' && quote.ticker === 'SBER', 'websocket receives SBER quote');
 
 console.log('Smoke test passed.');
 

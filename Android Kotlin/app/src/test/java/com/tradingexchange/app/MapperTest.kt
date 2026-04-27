@@ -1,9 +1,15 @@
 package com.tradingexchange.app
 
 import com.tradingexchange.app.data.remote.InstrumentDto
+import com.tradingexchange.app.data.remote.CandleChartResponseDto
+import com.tradingexchange.app.data.remote.CandleDto
+import com.tradingexchange.app.data.remote.LineChartPointDto
+import com.tradingexchange.app.data.remote.LineChartResponseDto
 import com.tradingexchange.app.data.remote.OrderDto
 import com.tradingexchange.app.data.remote.PortfolioPositionDto
 import com.tradingexchange.app.data.remote.toDomain
+import com.tradingexchange.app.domain.model.ChartRange
+import com.tradingexchange.app.domain.model.isValidFor
 import com.tradingexchange.app.domain.model.OrderSide
 import com.tradingexchange.app.domain.model.OrderStatus
 import java.math.BigDecimal
@@ -12,6 +18,23 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class MapperTest {
+    @Test
+    fun chartShortRangesUseNonAmbiguousApiValues() {
+        assertEquals("1MIN", ChartRange.MINUTE.apiValue)
+        assertEquals("1m", ChartRange.MINUTE.label)
+        assertEquals("1H", ChartRange.HOUR.apiValue)
+        assertEquals("1h", ChartRange.HOUR.label)
+        assertEquals("1M", ChartRange.MONTH.apiValue)
+    }
+
+    @Test
+    fun chartIntervalMustBeSmallerThanRange() {
+        assertEquals(true, com.tradingexchange.app.domain.model.ChartInterval.SECOND.isValidFor(ChartRange.MINUTE))
+        assertEquals(false, com.tradingexchange.app.domain.model.ChartInterval.MINUTE.isValidFor(ChartRange.MINUTE))
+        assertEquals(false, com.tradingexchange.app.domain.model.ChartInterval.HOUR.isValidFor(ChartRange.HOUR))
+        assertEquals(false, com.tradingexchange.app.domain.model.ChartInterval.DAY.isValidFor(ChartRange.DAY))
+    }
+
     @Test
     fun portfolioPositionConvertsDecimalStringsAndNullablePrice() {
         val domain = PortfolioPositionDto(
@@ -56,5 +79,32 @@ class MapperTest {
 
         assertEquals(OrderSide.BUY, domain.side)
         assertEquals(OrderStatus.FILLED, domain.status)
+    }
+
+    @Test
+    fun lineChartMapsDecimalStrings() {
+        val domain = LineChartResponseDto(
+            ticker = "SBER",
+            currency = "RUB",
+            range = "1D",
+            interval = "5m",
+            points = listOf(LineChartPointDto(timestampMs = 1L, price = "252.4200")),
+        ).toDomain()
+
+        assertEquals(BigDecimal("252.4200"), domain.points.first().price)
+    }
+
+    @Test
+    fun candleChartMapsOhlcDecimalStrings() {
+        val domain = CandleChartResponseDto(
+            ticker = "SBER",
+            currency = "RUB",
+            range = "1D",
+            interval = "5m",
+            candles = listOf(CandleDto(timestampMs = 1L, open = "251.0000", high = "253.0000", low = "250.5000", close = "252.0000")),
+        ).toDomain()
+
+        assertEquals(BigDecimal("253.0000"), domain.candles.first().high)
+        assertEquals(BigDecimal("250.5000"), domain.candles.first().low)
     }
 }

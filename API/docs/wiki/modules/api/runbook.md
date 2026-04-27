@@ -48,6 +48,7 @@ The smoke script verifies:
 - `/health`, `/health/live`, `/health/ready`;
 - register, login, refresh, logout;
 - profile, portfolio, instruments;
+- line chart and candlestick chart history;
 - create order, list orders, list transactions;
 - WebSocket subscribe and quote receive.
 

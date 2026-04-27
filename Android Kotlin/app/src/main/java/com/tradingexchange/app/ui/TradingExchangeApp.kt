@@ -22,7 +22,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.tradingexchange.app.ui.auth.AuthScreen
+import com.tradingexchange.app.ui.chart.InstrumentChartScreen
 import com.tradingexchange.app.ui.instruments.InstrumentsScreen
 import com.tradingexchange.app.ui.navigation.Route
 import com.tradingexchange.app.ui.orders.OrdersScreen
@@ -76,7 +78,18 @@ fun TradingExchangeApp(sessionViewModel: SessionViewModel = hiltViewModel()) {
         ) {
             composable(Route.Auth.value) { AuthScreen() }
             composable(Route.Portfolio.value) { PortfolioScreen(onOpenInstrument = { navController.navigate(Route.Instruments.value) }) }
-            composable(Route.Instruments.value) { InstrumentsScreen() }
+            composable(Route.Instruments.value) {
+                InstrumentsScreen(onOpenInstrument = { ticker -> navController.navigate(Route.InstrumentChart.create(ticker)) })
+            }
+            composable(
+                route = Route.InstrumentChart.value,
+                arguments = listOf(navArgument("ticker") { nullable = false }),
+            ) { entry ->
+                InstrumentChartScreen(
+                    ticker = entry.arguments?.getString("ticker").orEmpty(),
+                    onBack = { navController.popBackStack() },
+                )
+            }
             composable(Route.Orders.value) { OrdersScreen() }
             composable(Route.Transactions.value) { TransactionsScreen() }
             composable(Route.Profile.value) { ProfileScreen() }

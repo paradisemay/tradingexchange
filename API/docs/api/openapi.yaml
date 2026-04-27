@@ -197,6 +197,76 @@ paths:
                   $ref: "#/components/schemas/Instrument"
         "401":
           $ref: "#/components/responses/AuthChallenge"
+  /api/v1/instruments/{ticker}/chart/line:
+    get:
+      tags: [Charts]
+      summary: Get price points for a line chart
+      description: |
+        Returns historical price points prepared by backend from ClickHouse `quotes_raw`.
+        Mobile clients render the chart and never query ClickHouse directly.
+        The selected `interval` must be strictly smaller than the selected `range`.
+      parameters:
+        - $ref: "#/components/parameters/Ticker"
+        - $ref: "#/components/parameters/ChartRange"
+        - $ref: "#/components/parameters/ChartInterval"
+      responses:
+        "200":
+          description: Line chart time series
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LineChartResponse"
+              examples:
+                line:
+                  value:
+                    ticker: SBER
+                    currency: RUB
+                    range: 1MIN
+                    interval: 1s
+                    points:
+                      - { timestampMs: 1775901000000, price: "252.0000" }
+                      - { timestampMs: 1775901001000, price: "252.4200" }
+        "401":
+          $ref: "#/components/responses/AuthChallenge"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/InstrumentNotFound"
+  /api/v1/instruments/{ticker}/chart/candles:
+    get:
+      tags: [Charts]
+      summary: Get OHLC candles for a candlestick chart
+      description: |
+        Returns historical OHLC candles prepared by backend from ClickHouse `quotes_ohlc_1m`.
+        Decimal fields are strings to preserve precision across Kotlin/JVM, JavaScript and databases.
+        The selected `interval` must be strictly smaller than the selected `range`.
+      parameters:
+        - $ref: "#/components/parameters/Ticker"
+        - $ref: "#/components/parameters/ChartRange"
+        - $ref: "#/components/parameters/ChartInterval"
+      responses:
+        "200":
+          description: Candlestick chart time series
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CandleChartResponse"
+              examples:
+                candles:
+                  value:
+                    ticker: SBER
+                    currency: RUB
+                    range: 1H
+                    interval: 1m
+                    candles:
+                      - { timestampMs: 1775901000000, open: "251.5000", high: "253.0000", low: "251.0000", close: "252.0000" }
+                      - { timestampMs: 1775901060000, open: "252.0000", high: "253.3000", low: "251.8000", close: "252.4200" }
+        "401":
+          $ref: "#/components/responses/AuthChallenge"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/InstrumentNotFound"
   /api/v1/orders:
     post:
       tags: [Orders]
@@ -322,6 +392,30 @@ components:
         type: string
         format: date-time
       example: "2026-04-11T12:30:00Z"
+    Ticker:
+      name: ticker
+      in: path
+      required: true
+      schema:
+        type: string
+      example: SBER
+    ChartRange:
+      name: range
+      in: query
+      required: false
+      description: User-selected visible time range. `1MIN` is one minute; `1M` is one month.
+      schema:
+        type: string
+        enum: [1MIN, 1H, 1D, 1W, 1M, 6M, 1Y]
+        default: 1D
+    ChartInterval:
+      name: interval
+      in: query
+      required: false
+      description: Backend aggregation interval. Defaults depend on range.
+      schema:
+        type: string
+        enum: [1s, 1m, 5m, 15m, 1h, 1d]
   responses:
     ValidationError:
       description: Validation error
@@ -448,6 +542,45 @@ components:
         lotSize: { type: integer, example: 1 }
         isActive: { type: boolean }
         lastPrice: { type: [string, "null"], example: "252.0000" }
+    LineChartResponse:
+      type: object
+      required: [ticker, currency, range, interval, points]
+      properties:
+        ticker: { type: string, example: SBER }
+        currency: { type: string, example: RUB }
+        range: { type: string, enum: [1D, 1W, 1M, 6M, 1Y] }
+        interval: { type: string, enum: [1s, 1m, 5m, 15m, 1h, 1d] }
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/LineChartPoint"
+    LineChartPoint:
+      type: object
+      required: [timestampMs, price]
+      properties:
+        timestampMs: { type: integer, format: int64, example: 1775901000000 }
+        price: { type: string, example: "252.0000" }
+    CandleChartResponse:
+      type: object
+      required: [ticker, currency, range, interval, candles]
+      properties:
+        ticker: { type: string, example: SBER }
+        currency: { type: string, example: RUB }
+        range: { type: string, enum: [1D, 1W, 1M, 6M, 1Y] }
+        interval: { type: string, enum: [1s, 1m, 5m, 15m, 1h, 1d] }
+        candles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Candle"
+    Candle:
+      type: object
+      required: [timestampMs, open, high, low, close]
+      properties:
+        timestampMs: { type: integer, format: int64, example: 1775901000000 }
+        open: { type: string, example: "251.5000" }
+        high: { type: string, example: "253.0000" }
+        low: { type: string, example: "251.0000" }
+        close: { type: string, example: "252.0000" }
     CreateOrderRequest:
       type: object
       required: [ticker, side, orderType, quantity]

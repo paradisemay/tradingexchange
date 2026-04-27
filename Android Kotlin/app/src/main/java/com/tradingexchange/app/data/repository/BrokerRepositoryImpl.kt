@@ -9,8 +9,12 @@ import com.tradingexchange.app.data.remote.RemoteErrorMapper
 import com.tradingexchange.app.data.remote.toDomain
 import com.tradingexchange.app.data.remote.toDto
 import com.tradingexchange.app.domain.model.Cash
+import com.tradingexchange.app.domain.model.CandleChart
+import com.tradingexchange.app.domain.model.ChartInterval
+import com.tradingexchange.app.domain.model.ChartRange
 import com.tradingexchange.app.domain.model.CreateOrderCommand
 import com.tradingexchange.app.domain.model.Instrument
+import com.tradingexchange.app.domain.model.LineChart
 import com.tradingexchange.app.domain.model.Order
 import com.tradingexchange.app.domain.model.Portfolio
 import com.tradingexchange.app.domain.model.ResultPage
@@ -62,6 +66,14 @@ class BrokerRepositoryImpl @Inject constructor(
         instruments
     }
 
+    override suspend fun getLineChart(ticker: String, range: ChartRange, interval: ChartInterval): LineChart = wrap {
+        api.lineChart(ticker.uppercase(), range.apiValue, interval.apiValue).toDomain()
+    }
+
+    override suspend fun getCandleChart(ticker: String, range: ChartRange, interval: ChartInterval): CandleChart = wrap {
+        api.candleChart(ticker.uppercase(), range.apiValue, interval.apiValue).toDomain()
+    }
+
     override suspend fun createOrder(command: CreateOrderCommand): Order = wrap {
         val order = api.createOrder(command.toDto()).toDomain()
         dao.upsertOrders(listOf(order.toEntity()))
@@ -93,6 +105,7 @@ class BrokerRepositoryImpl @Inject constructor(
 
     private suspend fun <T> wrap(block: suspend () -> T): T =
         runCatching { block() }.getOrElse { throw RepositoryException(errorMapper.map(it), it) }
+
 }
 
 class RepositoryException(val appError: com.tradingexchange.app.domain.model.AppError, cause: Throwable) : RuntimeException(cause)

@@ -15,7 +15,8 @@ const requiredFiles = [
   'docs/wiki/modules/api/adr/README.md',
   'docs/wiki/modules/api/adr/ADR-0001-spec-and-mock-module.md',
   'docs/wiki/modules/api/adr/ADR-0002-openapi-and-asyncapi-split.md',
-  'docs/wiki/modules/api/adr/ADR-0003-environment-configuration.md'
+  'docs/wiki/modules/api/adr/ADR-0003-environment-configuration.md',
+  'docs/wiki/modules/api/adr/ADR-0004-chart-history-contract.md'
 ];
 
 const checks = [];
@@ -34,6 +35,8 @@ checks.push(['OpenAPI contains auth register', openapi.includes('/api/v1/auth/re
 checks.push(['OpenAPI contains current Ktor order list shape', openapi.includes('OrderListResponse') && openapi.includes('orders:')]);
 checks.push(['OpenAPI contains current Ktor transaction id field', openapi.includes('TransactionResponse') && openapi.includes('id: { type: string, format: uuid }')]);
 checks.push(['OpenAPI contains current Ktor 422/503 errors', openapi.includes('"422":') && openapi.includes('"503":')]);
+checks.push(['OpenAPI contains chart history endpoints', openapi.includes('/api/v1/instruments/{ticker}/chart/line:') && openapi.includes('/api/v1/instruments/{ticker}/chart/candles:')]);
+checks.push(['OpenAPI contains line and candle schemas', openapi.includes('LineChartResponse') && openapi.includes('CandleChartResponse')]);
 checks.push(['AsyncAPI version is 2.6.0', asyncapi.includes('asyncapi: 2.6.0')]);
 checks.push(['AsyncAPI contains quotes WebSocket channel', asyncapi.includes('/api/v1/quotes/ws:')]);
 checks.push(['AsyncAPI contains subscribe/unsubscribe/quote', asyncapi.includes('SubscribeCommand') && asyncapi.includes('UnsubscribeCommand') && asyncapi.includes('QuoteEvent')]);

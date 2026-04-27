@@ -36,6 +36,8 @@ Fallback нужен для мобильных клиентов, где WebSocket
 - `GET /api/v1/me`
 - `GET /api/v1/portfolio`
 - `GET /api/v1/instruments?query=SBER`
+- `GET /api/v1/instruments/{ticker}/chart/line?range=1D&interval=5m`
+- `GET /api/v1/instruments/{ticker}/chart/candles?range=1D&interval=5m`
 - `POST /api/v1/orders`
 - `GET /api/v1/orders?limit=50&cursor=...`
 - `GET /api/v1/transactions?limit=50&cursor=...`
@@ -95,6 +97,55 @@ Fallback нужен для мобильных клиентов, где WebSocket
   "nextCursor": null
 }
 ```
+
+## Chart contracts
+
+Historical chart data belongs to ClickHouse, but mobile clients access it only through Ktor/API.
+
+Line chart response:
+
+```json
+{
+  "ticker": "SBER",
+  "currency": "RUB",
+  "range": "1MIN",
+  "interval": "1s",
+  "points": [
+    { "timestampMs": 1775901000000, "price": "252.0000" }
+  ]
+}
+```
+
+Candlestick response:
+
+```json
+{
+  "ticker": "SBER",
+  "currency": "RUB",
+  "range": "1H",
+  "interval": "1m",
+  "candles": [
+    {
+      "timestampMs": 1775901000000,
+      "open": "251.5000",
+      "high": "253.0000",
+      "low": "251.0000",
+      "close": "252.0000"
+    }
+  ]
+}
+```
+
+Supported ranges: `1MIN`, `1H`, `1D`, `1W`, `1M`, `6M`, `1Y`.
+Supported intervals: `1s`, `1m`, `5m`, `15m`, `1h`, `1d`.
+
+`range` controls the visible period. `interval` controls point/candle granularity inside that period. `1MIN` means one minute; `1M` means one month. `interval` must be strictly smaller than `range`; invalid combinations return `400 VALIDATION_ERROR`.
+
+For long ranges Ktor should prefer pre-aggregated OHLC data from ClickHouse. For short line charts Ktor may use raw points or a downsampled series.
+
+API mock chart history is built only from quote ticks accumulated since mock-server startup. If no ticks exist for the requested ticker and range, the response contains an empty `points` or `candles` array.
+
+Open chart screens use REST as the initial snapshot and WebSocket `quote` messages as live incremental updates. Line charts update the current interval bucket instead of appending every tick.
 
 ## Error contract
 

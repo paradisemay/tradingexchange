@@ -49,6 +49,39 @@ data class InstrumentDto(
 )
 
 @Serializable
+data class LineChartResponseDto(
+    val ticker: String,
+    val currency: String,
+    val range: String,
+    val interval: String,
+    val points: List<LineChartPointDto>,
+)
+
+@Serializable
+data class LineChartPointDto(
+    val timestampMs: Long,
+    val price: String,
+)
+
+@Serializable
+data class CandleChartResponseDto(
+    val ticker: String,
+    val currency: String,
+    val range: String,
+    val interval: String,
+    val candles: List<CandleDto>,
+)
+
+@Serializable
+data class CandleDto(
+    val timestampMs: Long,
+    val open: String,
+    val high: String,
+    val low: String,
+    val close: String,
+)
+
+@Serializable
 data class CreateOrderRequestDto(
     val ticker: String,
     val side: String,

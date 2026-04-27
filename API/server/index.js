@@ -30,6 +30,8 @@ const instruments = [
 ];
 
 const prices = new Map(instruments.map((item) => [item.ticker, Number(item.lastPrice)]));
+const quoteHistory = new Map(instruments.map((item) => [item.ticker, []]));
+const MAX_CHART_POINTS = 160;
 const orders = [
   {
     orderId: 'f84cdb05-2833-4c72-b1ee-bb5c964abf8f',
@@ -145,6 +147,10 @@ async function handleRequest(req, res) {
       : instruments;
     return sendJson(res, 200, result);
   }
+  const chartMatch = url.pathname.match(/^\/api\/v1\/instruments\/([^/]+)\/chart\/(line|candles)$/);
+  if (chartMatch && req.method === 'GET') {
+    return handleChartHistory(chartMatch[1], chartMatch[2], url, res);
+  }
   if (url.pathname === '/api/v1/orders' && req.method === 'POST') {
     return handleCreateOrder(req, res);
   }
@@ -232,6 +238,39 @@ async function handleCreateOrder(req, res) {
   sendJson(res, 201, order);
 }
 
+function handleChartHistory(rawTicker, type, url, res) {
+  const ticker = String(rawTicker || '').toUpperCase();
+  const instrument = instruments.find((item) => item.ticker === ticker);
+  if (!instrument) return sendJson(res, 404, appError('INSTRUMENT_NOT_FOUND', `Instrument ${ticker} not found`));
+
+  const range = normalizeRange(url.searchParams.get('range'));
+  const intervalResult = normalizeInterval(url.searchParams.get('interval'), range);
+  if (intervalResult.error) return sendJson(res, 400, appError('VALIDATION_ERROR', intervalResult.error));
+  const interval = intervalResult.interval;
+  if (intervalMs(interval) >= rangeMs(range)) {
+    return sendJson(res, 400, appError('VALIDATION_ERROR', 'Chart interval must be smaller than chart range', { range, interval }));
+  }
+  const currency = instrument.currency;
+
+  if (type === 'line') {
+    return sendJson(res, 200, {
+      ticker,
+      currency,
+      range,
+      interval,
+      points: buildLinePoints(ticker, range, interval)
+    });
+  }
+
+  return sendJson(res, 200, {
+    ticker,
+    currency,
+    range,
+    interval,
+    candles: buildCandles(ticker, range, interval)
+  });
+}
+
 function paginateByCreatedAt(items, url, field) {
   const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 50), 1), 100);
   const cursor = url.searchParams.get('cursor');
@@ -241,6 +280,91 @@ function paginateByCreatedAt(items, url, field) {
     [field]: page,
     nextCursor: page.length === limit ? page[page.length - 1].createdAt : null
   };
+}
+
+function normalizeRange(value) {
+  const normalized = String(value || '1D').toUpperCase();
+  return ['1MIN', '1H', '1D', '1W', '1M', '6M', '1Y'].includes(normalized) ? normalized : '1D';
+}
+
+function normalizeInterval(value, range) {
+  const normalized = String(value || '').toLowerCase();
+  if (normalized && ['1s', '1m', '5m', '15m', '1h', '1d'].includes(normalized)) return { interval: normalized };
+  if (normalized) return { error: `Unsupported chart interval: ${value}` };
+  if (range === '1MIN') return { interval: '1s' };
+  if (range === '1H') return { interval: '1m' };
+  if (range === '1D') return { interval: '5m' };
+  if (range === '1W') return { interval: '1h' };
+  return { interval: '1d' };
+}
+
+function rangeMs(range) {
+  const minute = 60 * 1000;
+  const day = 24 * 60 * 60 * 1000;
+  return {
+    '1MIN': minute,
+    '1H': 60 * minute,
+    '1D': day,
+    '1W': 7 * day,
+    '1M': 30 * day,
+    '6M': 182 * day,
+    '1Y': 365 * day
+  }[range] || day;
+}
+
+function intervalMs(interval) {
+  const second = 1000;
+  const minute = 60 * 1000;
+  return {
+    '1s': second,
+    '1m': minute,
+    '5m': 5 * minute,
+    '15m': 15 * minute,
+    '1h': 60 * minute,
+    '1d': 24 * 60 * minute
+  }[interval] || 5 * minute;
+}
+
+function buildLinePoints(ticker, range, interval) {
+  const buckets = bucketHistory(ticker, range, interval);
+  return buckets.map((bucket) => ({
+    timestampMs: bucket.timestampMs,
+    price: bucket.last.price
+  })).slice(-pointLimit(range, interval));
+}
+
+function buildCandles(ticker, range, interval) {
+  return bucketHistory(ticker, range, interval).map((bucket) => ({
+    timestampMs: bucket.timestampMs,
+    open: bucket.open.price,
+    high: bucket.high.price,
+    low: bucket.low.price,
+    close: bucket.last.price
+  })).slice(-pointLimit(range, interval));
+}
+
+function bucketHistory(ticker, range, interval) {
+  const minTimestamp = Date.now() - rangeMs(range);
+  const step = intervalMs(interval);
+  const buckets = new Map();
+  for (const tick of quoteHistory.get(ticker) || []) {
+    if (tick.timestampMs < minTimestamp) continue;
+    const bucketTimestamp = Math.floor(tick.timestampMs / step) * step;
+    const current = buckets.get(bucketTimestamp);
+    if (!current) {
+      buckets.set(bucketTimestamp, { timestampMs: bucketTimestamp, open: tick, high: tick, low: tick, last: tick });
+      continue;
+    }
+    current.high = Number(tick.price) > Number(current.high.price) ? tick : current.high;
+    current.low = Number(tick.price) < Number(current.low.price) ? tick : current.low;
+    current.last = tick;
+  }
+  return [...buckets.values()].sort((left, right) => left.timestampMs - right.timestampMs);
+}
+
+function pointLimit(range, interval) {
+  const raw = Math.floor(rangeMs(range) / intervalMs(interval));
+  return Math.min(Math.max(raw, 1), MAX_CHART_POINTS);
 }
 
 function isRestAuthorized(req) {
@@ -426,11 +550,21 @@ function nextQuote(ticker) {
   const current = prices.get(ticker) || 100;
   const updated = Math.max(1, current + (Math.random() - 0.5) * 2);
   prices.set(ticker, updated);
-  return {
+  const quote = {
     type: 'quote',
     ticker,
     price: updated.toFixed(4),
     currency: 'RUB',
     timestampMs: Date.now()
   };
+  rememberQuote(quote);
+  return quote;
+}
+
+function rememberQuote(quote) {
+  const history = quoteHistory.get(quote.ticker) || [];
+  history.push({ timestampMs: quote.timestampMs, price: quote.price });
+  const minTimestamp = Date.now() - rangeMs('1Y');
+  while (history.length > 0 && history[0].timestampMs < minTimestamp) history.shift();
+  quoteHistory.set(quote.ticker, history);
 }
