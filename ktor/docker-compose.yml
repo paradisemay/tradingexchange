@@ -11,7 +11,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-broker_app}", "-d", "${POSTGRES_DB:-broker}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-broker_app} -d ${POSTGRES_DB:-broker}"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -21,13 +21,17 @@ services:
   redis:
     image: redis:7-alpine
     container_name: broker-redis
-    command: >
-      redis-server
-      --requirepass ${REDIS_PASSWORD:-}
-      --maxmemory 512mb
-      --maxmemory-policy volatile-ttl
-      --appendonly yes
-      --appendfsync everysec
+    # list-формат команды — не страдает от пустых переменных, в отличие от YAML >-строки
+    command:
+      - redis-server
+      - --maxmemory
+      - 512mb
+      - --maxmemory-policy
+      - volatile-ttl
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
     volumes:
       - redis_data:/data
     ports:
@@ -44,7 +48,7 @@ services:
     image: oliver006/redis_exporter:v1.66.0
     container_name: broker-redis-exporter
     environment:
-      REDIS_ADDR: redis://redis:6379
+      REDIS_ADDR: "redis://redis:6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     ports:
       - "9121:9121"
@@ -72,7 +76,35 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: broker-ktor
-    env_file: .env
+    # Все переменные заданы прямо здесь с дефолтами — .env не обязателен.
+    # Переопределить можно через docker compose --env-file .env up
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-broker}
+      POSTGRES_USER: ${POSTGRES_USER:-broker_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-broker_app}
+      POSTGRES_MAX_POOL_SIZE: "30"
+      POSTGRES_CONNECTION_TIMEOUT_MS: "3000"
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me-min-32-characters!!}
+      JWT_ACCESS_TTL_MINUTES: "15"
+      JWT_REFRESH_TTL_DAYS: "30"
+      JWT_ISSUER: ktor-broker
+      JWT_AUDIENCE: ktor-broker-clients
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_STREAM: ${REDIS_STREAM:-stream:quotes:v1}
+      REDIS_CONSUMER_GROUP: ${REDIS_CONSUMER_GROUP:-cg:ktor:quotes}
+      REDIS_CONSUMER_NAME: ${REDIS_CONSUMER_NAME:-ktor-instance-1}
+      # OTel: экспорт выключен по умолчанию — otel-collector поднимается командой Telemetry.
+      # Чтобы включить: OTEL_TRACES_EXPORTER=otlp OTEL_METRICS_EXPORTER=otlp OTEL_LOGS_EXPORTER=otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
+      OTEL_SERVICE_NAME: ktor-backend
+      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-none}
+      OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-none}
+      OTEL_LOGS_EXPORTER: ${OTEL_LOGS_EXPORTER:-none}
+      PORT: "8080"
     ports:
       - "8080:8080"
     depends_on:
@@ -87,7 +119,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 60s
 
 volumes:
   postgres_data:

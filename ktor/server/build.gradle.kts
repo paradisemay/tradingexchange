@@ -25,6 +25,7 @@ configurations.all {
 
 dependencies {
     // Ktor server
+    implementation(ktorLibs.server.swagger)
     implementation(ktorLibs.serialization.kotlinx.json)
     implementation(ktorLibs.server.auth)
     implementation(ktorLibs.server.auth.jwt)
@@ -43,8 +44,9 @@ dependencies {
     implementation(libs.flyway.core)
     implementation(libs.flyway.database.postgresql)
 
-    // Redis
+    // Redis + Protobuf (quote stream contract: stream:quotes:v1, payload = binary Protobuf)
     implementation(libs.lettuce.core)
+    implementation(libs.kotlinx.serialization.protobuf)
 
     // OpenTelemetry (inlined from former :core module)
     implementation(libs.opentelemetry.exporterOtlp)
