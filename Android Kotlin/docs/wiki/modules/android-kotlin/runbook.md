@@ -76,13 +76,15 @@ adb reverse tcp:8081 tcp:8081
 
 1. Login with default mock credentials.
 2. Open portfolio and verify positions/cash.
-3. Open instruments and search `SBER`.
-4. Open `SBER` chart and switch between `Line` and `Candles`.
-5. Change ranges `1m`, `1h`, `1D`, `1W`, `1M`, `6M`, `1Y`.
-6. Change intervals `1s`, `1m`, `1h`.
-7. Wait for a WebSocket quote and confirm `Last`, point count and chart shape update without reopening the screen.
-7. Create BUY order for `SBER`.
-8. Return to portfolio and refresh.
-9. Open transactions and verify BUY transaction.
-10. Keep portfolio open and verify quote price updates.
+3. Open instruments and verify the empty search shows all instruments.
+4. Search `SBER` and verify only matching instruments remain visible.
+5. Keep instruments open and verify visible instrument prices update from WebSocket quotes.
+6. Open `SBER` chart and switch between `Line` and `Candles`.
+7. Change ranges `1m`, `1h`, `1D`, `1W`, `1M`, `6M`, `1Y`.
+8. Change intervals `1s`, `1m`, `1h`.
+9. Wait for a WebSocket quote and confirm `Last`, point count and chart shape update without reopening the screen.
+10. Create BUY order for `SBER`.
+11. Return to portfolio and refresh.
+12. Open transactions and verify BUY transaction.
+13. Keep portfolio open and verify quote price updates.
 11. Logout and verify auth screen appears.

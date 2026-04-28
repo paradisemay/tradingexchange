@@ -26,11 +26,14 @@ Recommended next tests:
 - Login success and validation failure.
 - Portfolio cache-first load.
 - Instrument search empty and content states.
+- Instrument search shows only current REST matches instead of stale Room cache.
+- Instrument visible prices update from WebSocket quotes.
 - Chart load, chart type switch and range switch.
 - Chart interval switch for `1s`, `1m`, `1h`.
 - Chart short ranges `1m`/`1h` map to API `1MIN`/`1H`.
 - Chart invalid intervals are hidden and replaced with a recommended valid interval on range change.
 - Chart live quote update respects the selected interval bucket for line and candle charts.
+- Chart live state trims old buckets by selected range, for example `1m / 1s` keeps at most 60 buckets.
 - Order create success and insufficient funds mapping.
 - WebSocket quote update propagated into portfolio state.
 
