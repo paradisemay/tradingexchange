@@ -43,6 +43,7 @@ dependencies {
     implementation(libs.hikaricp)
     implementation(libs.flyway.core)
     implementation(libs.flyway.database.postgresql)
+    implementation(libs.clickhouse.jdbc) { artifact { classifier = "all" } }
 
     // Redis + Protobuf (quote stream contract: stream:quotes:v1, payload = binary Protobuf)
     implementation(libs.lettuce.core)

@@ -107,6 +107,31 @@ components:
         quantity: { type: string, nullable: true }
         createdAt: { type: string, format: date-time }
 
+    LinePoint:
+      type: object
+      properties:
+        timestampMs: { type: integer, format: int64, example: 1735689600000 }
+        price: { type: number, format: double, example: 253.45 }
+
+    CandlePoint:
+      type: object
+      properties:
+        timestampMs: { type: integer, format: int64, example: 1735689600000 }
+        open: { type: number, format: double }
+        high: { type: number, format: double }
+        low: { type: number, format: double }
+        close: { type: number, format: double }
+        volume: { type: integer, format: int64 }
+
+    ChartSummary:
+      type: object
+      properties:
+        minPrice: { type: number, format: double }
+        maxPrice: { type: number, format: double }
+        firstPrice: { type: number, format: double }
+        lastPrice: { type: number, format: double }
+        points: { type: integer, format: int64 }
+
 security:
   - bearerAuth: []
 
@@ -326,6 +351,59 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/TransactionResponse' }
                   nextCursor: { type: string, nullable: true }
+
+  /api/v1/charts/{ticker}/line:
+    get:
+      tags: [Charts]
+      summary: Line chart — raw price points from ClickHouse
+      parameters:
+        - { name: ticker, in: path, required: true, schema: { type: string } }
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time }, example: "2025-01-01T00:00:00Z" }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time }, example: "2025-01-02T00:00:00Z" }
+        - { name: limit, in: query, schema: { type: integer, default: 1000, maximum: 5000 } }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/LinePoint' }
+        "400": { description: Validation error }
+
+  /api/v1/charts/{ticker}/candles:
+    get:
+      tags: [Charts]
+      summary: OHLC candlestick chart (1-minute buckets) from ClickHouse
+      parameters:
+        - { name: ticker, in: path, required: true, schema: { type: string } }
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: interval, in: query, schema: { type: string, default: "1m", enum: ["1m"] } }
+        - { name: limit, in: query, schema: { type: integer, default: 500, maximum: 1440 } }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CandlePoint' }
+        "400": { description: Validation error }
+
+  /api/v1/charts/{ticker}/summary:
+    get:
+      tags: [Charts]
+      summary: Price summary (min/max/first/last) for a time range
+      parameters:
+        - { name: ticker, in: path, required: true, schema: { type: string } }
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChartSummary' }
+        "204": { description: No data in range }
+        "400": { description: Validation error }
 
   /api/v1/quotes/ws:
     get:

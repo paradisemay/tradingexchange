@@ -3,6 +3,8 @@ package com.example
 import com.example.auth.AuthService
 import com.example.auth.JwtUtil
 import com.example.auth.authRoutes
+import com.example.clickhouse.ClickHouseRepository
+import com.example.clickhouse.chartRoutes
 import com.example.config.AppConfig
 import com.example.db.DatabaseFactory
 import com.example.health.healthRoutes
@@ -15,6 +17,7 @@ import com.example.plugins.configureSecurity
 import com.example.plugins.configureSerialization
 import com.example.plugins.configureStatusPages
 import com.example.plugins.configureWebsockets
+import com.example.plugins.registerMetrics
 import com.example.portfolio.portfolioRoutes
 import com.example.quotes.PriceCache
 import com.example.quotes.RedisSubscriber
@@ -40,13 +43,15 @@ fun Application.module() {
     val json = Json { ignoreUnknownKeys = true }
 
     val redisSubscriber = RedisSubscriber(config.redis, priceCache, wsManager, json)
+    val clickHouseRepo = ClickHouseRepository(config.clickHouse)
 
     configureMonitoring()
     configureSerialization()
     configureSecurity(config.jwt, jwtUtil)
     configureWebsockets()
     configureStatusPages()
-    configureOpenTelemetry()
+    val otel = configureOpenTelemetry()
+    registerMetrics(otel, wsManager, redisSubscriber, dataSource)
 
     val authService = AuthService(dataSource, jwtUtil, config.jwt)
     val orderService = OrderService(dataSource, priceCache)
@@ -60,6 +65,7 @@ fun Application.module() {
         orderRoutes(dataSource, orderService)
         transactionRoutes(dataSource)
         quotesWebSocket(wsManager, jwtUtil, json)
+        chartRoutes(clickHouseRepo)
     }
 
     redisSubscriber.start()
