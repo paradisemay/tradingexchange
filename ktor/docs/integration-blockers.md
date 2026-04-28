@@ -119,8 +119,8 @@ data class QuoteTick(
 
 ## Контрольные вопросы при ревью интеграции
 
-- [ ] Go опубликовал `quotes.v1.proto` → сверены `@ProtoNumber` в `QuoteTick.kt`
+- [x] Go опубликовал `quotes.v1.proto` → сверены `@ProtoNumber` в `QuoteTick.kt` (`price` исправлен с Float на Double, поле `currency` удалено — нет в proto)
 - [ ] Ktor получает реальные тики из `stream:quotes:v1` → WebSocket-клиент видит обновления цен
-- [ ] `OTEL_TRACES_EXPORTER=otlp` включён → в Grafana/Tempo видны трейсы
-- [ ] ClickHouse-эндпоинты реализованы и покрыты тестами
+- [x] `OTEL_TRACES_EXPORTER=otlp` включён → broker-ktor подключён к `telemetry-net`, exporters дефолтятся в `otlp`
+- [x] ClickHouse-эндпоинты реализованы (`/api/v1/charts/{ticker}/line|candles|summary`) — нужны интеграционные тесты
 - [ ] Все модули в одной Docker-сети → `docker compose up` поднимает всё одной командой
