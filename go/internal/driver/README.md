@@ -1,6 +1,6 @@
 # Запуск
 ```
-cd ./itmoex
+cd ./go/internal/driver
 make
 ```
 # Чтение 
