@@ -2,6 +2,11 @@
 
 Redis is the local high-speed broker and short-lived cache for the trading platform.
 
+## Unified stack note
+
+Для общего запуска всей архитектуры используйте корневой compose из корня репозитория.
+Локальный `redis/docker-compose.yml` оставлен для изолированных проверок Redis.
+
 This module is intentionally infrastructure-only. It does not encode, decode, or validate quote payloads. Redis stores quote messages as opaque bytes in Streams and stores temporary cache keys with explicit TTLs.
 
 ## Scope

@@ -3,6 +3,17 @@
 Бэкенд брокерского приложения: REST API + WebSocket котировок.  
 Стек: **Kotlin / Ktor · PostgreSQL · Redis · HikariCP · Flyway · Argon2id · JWT · OpenTelemetry**.
 
+## Unified stack note
+
+Для полного развёртывания всей системы используйте корневой compose:
+
+```bash
+cd ..
+docker compose up --build
+```
+
+Локальный `ktor/docker-compose.yml` полезен для изолированной разработки только этого модуля.
+
 ---
 
 ## Требования

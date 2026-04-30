@@ -2,6 +2,21 @@
 
 Клиентское приложение Android Vue для биржевого терминала по Mini-SRS.
 
+## Unified stack note
+
+Основной запуск всей платформы теперь выполняется из корня репозитория:
+
+```bash
+cd ..
+docker compose up --build -d
+```
+
+APK-сборка через тот же root compose:
+
+```bash
+docker compose --profile apk run --rm android-vue-apk
+```
+
 ## Стек
 
 - Vue 3 Composition API + TypeScript
