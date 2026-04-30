@@ -6,11 +6,11 @@ import io.ktor.server.testing.testApplication
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class ServerTest {
+class ServerTest : BaseIntegrationTest() {
 
     @Test
     fun `health live returns 200`() = testApplication {
-        application { module() }
+        application { testModule(buildConfig()) }
         val response = client.get("/health/live")
         assertEquals(HttpStatusCode.OK, response.status)
     }
