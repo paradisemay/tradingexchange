@@ -76,6 +76,26 @@ class InstrumentChartViewModelTest {
     }
 
     @Test
+    fun minuteRangeSecondIntervalKeepsSixtyLinePoints() = runTest {
+        val quotesRepository = FakeQuotesRepository()
+        val viewModel = chartViewModel(quotesRepository)
+
+        viewModel.load("SBER")
+        advanceUntilIdle()
+        viewModel.selectRange(ChartRange.MINUTE)
+        advanceUntilIdle()
+        repeat(61) { index ->
+            quotesRepository.emit(Quote("SBER", BigDecimal(252 + index), "RUB", index * 1_000L))
+            advanceUntilIdle()
+        }
+
+        val points = viewModel.state.value.linePoints
+        assertEquals(60, points.size)
+        assertEquals(1_000L, points.first().timestampMs)
+        assertEquals(60_000L, points.last().timestampMs)
+    }
+
+    @Test
     fun rangeChangeReplacesInvalidIntervalWithRecommendedInterval() = runTest {
         val viewModel = chartViewModel(FakeQuotesRepository())
 
@@ -104,6 +124,28 @@ class InstrumentChartViewModelTest {
         val candles = viewModel.state.value.candles
         assertEquals(BigDecimal("253.0000"), candles.first().close)
         assertTrue(candles.any { it.timestampMs == 60_000L && it.close == BigDecimal("254.0000") })
+    }
+
+    @Test
+    fun minuteRangeSecondIntervalKeepsSixtyCandles() = runTest {
+        val quotesRepository = FakeQuotesRepository()
+        val viewModel = chartViewModel(quotesRepository)
+
+        viewModel.load("SBER")
+        advanceUntilIdle()
+        viewModel.selectRange(ChartRange.MINUTE)
+        advanceUntilIdle()
+        viewModel.selectType(ChartType.CANDLES)
+        advanceUntilIdle()
+        repeat(61) { index ->
+            quotesRepository.emit(Quote("SBER", BigDecimal(252 + index), "RUB", index * 1_000L))
+            advanceUntilIdle()
+        }
+
+        val candles = viewModel.state.value.candles
+        assertEquals(60, candles.size)
+        assertEquals(1_000L, candles.first().timestampMs)
+        assertEquals(60_000L, candles.last().timestampMs)
     }
 
     private fun chartViewModel(quotesRepository: FakeQuotesRepository) = InstrumentChartViewModel(

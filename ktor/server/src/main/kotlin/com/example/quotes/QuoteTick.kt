@@ -5,22 +5,18 @@ import kotlinx.serialization.protobuf.ProtoNumber
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-/**
- * Protobuf-десериализация сообщения из stream:quotes:v1 (поле payload).
- * Номера полей должны совпадать со схемой quotes.v1 Go-модуля.
- * TODO: сверить @ProtoNumber с .proto-файлом Go-команды когда он будет опубликован.
- */
+// Protobuf contract: quotes.v1.proto (Go module)
+// field 1 ticker string, field 2 price double, field 3 timestamp_ms int64
 @Serializable
 data class QuoteTick(
     @ProtoNumber(1) val ticker: String = "",
-    @ProtoNumber(2) val price: Float = 0f,
+    @ProtoNumber(2) val price: Double = 0.0,
     @ProtoNumber(3) val timestampMs: Long = 0L,
-    @ProtoNumber(4) val currency: String = "RUB",
 )
 
 fun QuoteTick.toQuoteMessage() = QuoteMessage(
     ticker = ticker,
-    price = BigDecimal(price.toDouble()).setScale(4, RoundingMode.HALF_UP).toPlainString(),
-    currency = currency.ifBlank { "RUB" },
+    price = BigDecimal(price).setScale(4, RoundingMode.HALF_UP).toPlainString(),
+    currency = "RUB",
     timestampMs = if (timestampMs > 0) timestampMs else System.currentTimeMillis(),
 )

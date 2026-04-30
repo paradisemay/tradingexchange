@@ -1,0 +1,17 @@
+:root {
+  --ion-font-family: Inter, Arial, sans-serif;
+}
+
+#app {
+  width: 100%;
+}
+
+.form-error {
+  color: var(--ion-color-danger);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.mono {
+  font-family: Consolas, "Courier New", monospace;
+}

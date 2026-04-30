@@ -6,6 +6,8 @@ import com.example.domain.ErrorCode
 import com.example.domain.Order
 import com.example.instruments.InstrumentRepository
 import com.example.quotes.PriceCache
+import io.opentelemetry.api.GlobalOpenTelemetry
+import io.opentelemetry.api.trace.StatusCode
 import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -28,23 +30,39 @@ class OrderService(
     private val orderRepo: OrderRepository = OrderRepository(),
     private val instrumentRepo: InstrumentRepository = InstrumentRepository(),
 ) {
+    private val tracer by lazy { GlobalOpenTelemetry.get().getTracer("ktor-backend") }
 
     suspend fun createOrder(userId: UUID, req: CreateOrderRequest): Order {
         validate(req)
         val quantity = BigDecimal(req.quantity)
         val limitPrice = req.limitPrice?.let { BigDecimal(it) }
 
-        return ds.withTransaction { conn ->
-            val instrument = instrumentRepo.findByTicker(conn, req.ticker)
-                ?: throw AppException(ErrorCode.INSTRUMENT_NOT_FOUND, "Instrument ${req.ticker} not found")
+        val span = tracer.spanBuilder("order.execute")
+            .setAttribute("order.side", req.side)
+            .setAttribute("order.type", req.orderType)
+            .setAttribute("order.ticker", req.ticker)
+            .startSpan()
+        val scope = span.makeCurrent()
+        return try {
+            ds.withTransaction { conn ->
+                val instrument = instrumentRepo.findByTicker(conn, req.ticker)
+                    ?: throw AppException(ErrorCode.INSTRUMENT_NOT_FOUND, "Instrument ${req.ticker} not found")
 
-            val executionPrice = resolvePrice(instrument, req.orderType, limitPrice)
+                val executionPrice = resolvePrice(instrument, req.orderType, limitPrice)
 
-            when (req.side) {
-                "BUY" -> executeBuy(conn, userId, req.ticker, quantity, executionPrice)
-                "SELL" -> executeSell(conn, userId, req.ticker, quantity, executionPrice)
-                else -> throw AppException(ErrorCode.VALIDATION_ERROR, "Invalid side: ${req.side}")
+                when (req.side) {
+                    "BUY" -> executeBuy(conn, userId, req.ticker, quantity, executionPrice)
+                    "SELL" -> executeSell(conn, userId, req.ticker, quantity, executionPrice)
+                    else -> throw AppException(ErrorCode.VALIDATION_ERROR, "Invalid side: ${req.side}")
+                }
             }
+        } catch (e: Exception) {
+            span.setStatus(StatusCode.ERROR, e.message ?: "error")
+            span.recordException(e)
+            throw e
+        } finally {
+            scope.close()
+            span.end()
         }
     }
 

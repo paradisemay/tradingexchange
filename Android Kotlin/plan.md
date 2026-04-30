@@ -24,6 +24,8 @@ The Android Kotlin module is a native Android broker terminal. It talks only to 
 - [x] Short chart ranges `1m` and `1h` backed by API `1MIN` and `1H`.
 - [x] Live chart updates from WebSocket quotes after REST snapshot load.
 - [x] Hide invalid chart intervals and bucket line live updates by selected interval.
+- [x] Trim live chart buckets by selected range and interval.
+- [x] Instruments search uses current REST matches and visible live quote subscriptions.
 
 ## Next Small Tasks
 

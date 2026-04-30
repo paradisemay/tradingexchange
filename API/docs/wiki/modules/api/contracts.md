@@ -145,6 +145,8 @@ For long ranges Ktor should prefer pre-aggregated OHLC data from ClickHouse. For
 
 API mock chart history is built only from quote ticks accumulated since mock-server startup. If no ticks exist for the requested ticker and range, the response contains an empty `points` or `candles` array.
 
+Chart responses are capped by the selected window: `floor(range / interval)` buckets, with a defensive maximum of 160 buckets for long ranges.
+
 Open chart screens use REST as the initial snapshot and WebSocket `quote` messages as live incremental updates. Line charts update the current interval bucket instead of appending every tick.
 
 ## Error contract

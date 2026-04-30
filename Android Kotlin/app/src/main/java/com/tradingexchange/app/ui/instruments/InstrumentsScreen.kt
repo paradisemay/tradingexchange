@@ -40,12 +40,16 @@ fun InstrumentsScreen(
         }
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (state.isLoading) CircularProgressIndicator()
+        if (!state.isLoading && state.instruments.isEmpty()) {
+            Text("No instruments found")
+        }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(state.instruments) { item ->
+                val livePrice = state.quotes[item.ticker]?.price ?: item.lastPrice
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("${item.ticker} - ${item.name}", style = MaterialTheme.typography.titleMedium)
-                        Text("Price: ${item.lastPrice?.toPlainString() ?: "-"} ${item.currency}")
+                        Text("Price: ${livePrice?.toPlainString() ?: "-"} ${item.currency}")
                         Text("Lot: ${item.lotSize}")
                         Button(onClick = { onOpenInstrument(item.ticker) }) {
                             Text("Open chart")

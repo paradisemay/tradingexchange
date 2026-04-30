@@ -36,6 +36,7 @@ const quote = await step('websocket', () => websocketSmoke(wsUrl));
 assert(quote.type === 'quote' && quote.ticker === 'SBER', 'websocket receives SBER quote');
 const lineChart = await step('charts/line', () => request('GET', '/api/v1/instruments/SBER/chart/line?range=1MIN&interval=1s', null, authHeaders));
 assert(Array.isArray(lineChart.points) && lineChart.points.length > 0, 'line chart returns points');
+assert(lineChart.points.length <= 60, '1MIN/1s line chart returns at most 60 points');
 const hourLineChart = await step('charts/line-hour', () => request('GET', '/api/v1/instruments/SBER/chart/line?range=1H&interval=1m', null, authHeaders));
 assert(Array.isArray(hourLineChart.points) && hourLineChart.points.length > 0, 'hour line chart returns points');
 const candleChart = await step('charts/candles', () => request('GET', '/api/v1/instruments/SBER/chart/candles?range=1H&interval=1m', null, authHeaders));
