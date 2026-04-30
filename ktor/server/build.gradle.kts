@@ -63,8 +63,20 @@ dependencies {
     implementation(libs.logstash.logback.encoder)
 
     // Tests
-    testImplementation(kotlin("test"))
+    testImplementation(kotlin("test-junit5"))
     testImplementation(ktorLibs.server.testHost)
+    testImplementation(ktorLibs.client.contentNegotiation)
+    testImplementation(ktorLibs.serialization.kotlinx.json)
+    testImplementation(libs.testcontainers.core)
     testImplementation(libs.testcontainers.postgresql)
     testImplementation(libs.testcontainers.junit)
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.4")
+}
+
+tasks.test {
+    useJUnitPlatform()
+    jvmArgs(
+        "--add-opens", "java.base/java.util=ALL-UNNAMED",
+        "--add-opens", "java.base/java.lang=ALL-UNNAMED",
+    )
 }
