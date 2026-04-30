@@ -1,0 +1,336 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-broker}
+      POSTGRES_USER: ${POSTGRES_USER:-broker_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-broker_app}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-broker_app} -d ${POSTGRES_DB:-broker}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - trading-net
+
+  redis:
+    image: redis:7-alpine
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        args="redis-server /usr/local/etc/redis/redis.conf --maxmemory $${REDIS_MAXMEMORY:-512mb}"
+        if [ -n "$${REDIS_PASSWORD:-}" ]; then
+          args="$$args --requirepass $$REDIS_PASSWORD"
+        fi
+        exec $$args
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_MAXMEMORY: ${REDIS_MAXMEMORY:-512mb}
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "if [ -n \"$${REDIS_PASSWORD:-}\" ]; then REDISCLI_AUTH=\"$${REDIS_PASSWORD}\" redis-cli ping; else redis-cli ping; fi",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - trading-net
+
+  clickhouse:
+    image: ${CLICKHOUSE_IMAGE:-clickhouse/clickhouse-server:25.3-alpine}
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-trading}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-trading_app}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-change-me}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ports:
+      - "${CLICKHOUSE_HTTP_PORT:-8123}:8123"
+      - "${CLICKHOUSE_TCP_PORT:-9000}:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse/sql/010_schema.sql:/docker-entrypoint-initdb.d/010_schema.sql:ro
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "clickhouse-client --host 127.0.0.1 --port 9000 --user \"$${CLICKHOUSE_USER}\" --password \"$${CLICKHOUSE_PASSWORD}\" --query 'SELECT 1'",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks:
+      - trading-net
+
+  mock-driver:
+    build:
+      context: ./go
+      target: mock-driver
+    environment:
+      MOCK_TICKERS: ${MOCK_TICKERS:-SBER,GAZP,YNDX,LKOH,ROSN}
+      MOCK_INTERVAL_MS: ${MOCK_INTERVAL_MS:-100}
+    volumes:
+      - quotes-pipe:/shared
+    entrypoint: ["sh", "-c", "mkfifo /shared/quotes 2>/dev/null || true && exec /app/mock-driver > /shared/quotes"]
+    restart: unless-stopped
+    networks:
+      - trading-net
+
+  collector:
+    build:
+      context: ./go
+      target: collector
+    environment:
+      DRIVER_DEVICE_PATH: /shared/quotes
+      LOG_LEVEL: ${GO_LOG_LEVEL:-info}
+      CLICKHOUSE_ENABLED: ${CLICKHOUSE_ENABLED:-true}
+      CLICKHOUSE_ADDR: clickhouse:9000
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-trading}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-trading_app}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-change-me}
+      CLICKHOUSE_TABLE: ${CLICKHOUSE_TABLE:-quotes_raw}
+      CLICKHOUSE_BATCH_SIZE: ${CLICKHOUSE_BATCH_SIZE:-10000}
+      CLICKHOUSE_FLUSH_INTERVAL_MS: ${CLICKHOUSE_FLUSH_INTERVAL_MS:-200}
+      CLICKHOUSE_INSERT_TIMEOUT_MS: ${CLICKHOUSE_INSERT_TIMEOUT_MS:-5000}
+      CLICKHOUSE_RETRY_INITIAL_MS: ${CLICKHOUSE_RETRY_INITIAL_MS:-100}
+      CLICKHOUSE_RETRY_MAX_MS: ${CLICKHOUSE_RETRY_MAX_MS:-2000}
+      CLICKHOUSE_DIAL_TIMEOUT_MS: ${CLICKHOUSE_DIAL_TIMEOUT_MS:-5000}
+    volumes:
+      - quotes-pipe:/shared
+    entrypoint: ["sh", "-c", "until [ -p /shared/quotes ]; do sleep 0.1; done && exec /app/quotes-collector"]
+    depends_on:
+      mock-driver:
+        condition: service_started
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - trading-net
+
+  ktor:
+    build:
+      context: ./ktor
+      dockerfile: Dockerfile
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-broker}
+      POSTGRES_USER: ${POSTGRES_USER:-broker_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-broker_app}
+      POSTGRES_MAX_POOL_SIZE: ${POSTGRES_MAX_POOL_SIZE:-30}
+      POSTGRES_CONNECTION_TIMEOUT_MS: ${POSTGRES_CONNECTION_TIMEOUT_MS:-3000}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me-min-32-characters!!}
+      JWT_ACCESS_TTL_MINUTES: ${JWT_ACCESS_TTL_MINUTES:-15}
+      JWT_REFRESH_TTL_DAYS: ${JWT_REFRESH_TTL_DAYS:-30}
+      JWT_ISSUER: ${JWT_ISSUER:-ktor-broker}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-ktor-broker-clients}
+      REDIS_HOST: ${KTOR_REDIS_HOST:-redis}
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_STREAM: ${REDIS_STREAM:-stream:quotes:v1}
+      REDIS_CONSUMER_GROUP: ${REDIS_CONSUMER_GROUP:-cg:ktor:quotes}
+      REDIS_CONSUMER_NAME: ${REDIS_CONSUMER_NAME:-ktor-instance-1}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-ktor-backend}
+      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-none}
+      OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-none}
+      OTEL_LOGS_EXPORTER: ${OTEL_LOGS_EXPORTER:-none}
+      JAVA_TOOL_OPTIONS: -Dnetworkaddress.cache.negative.ttl=0
+      PORT: "8080"
+    ports:
+      - "${KTOR_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - trading-net
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.123.0
+    command: ["--config=/etc/otelcol/config.yml"]
+    volumes:
+      - ./telemetry/otel-collector/otel-collector.yml:/etc/otelcol/config.yml:ro
+    ports:
+      - "${OTEL_COLLECTOR_GRPC_PORT:-4317}:4317"
+      - "${OTEL_COLLECTOR_HTTP_PORT:-4318}:4318"
+      - "${OTEL_COLLECTOR_PROMETHEUS_PORT:-8889}:8889"
+      - "${OTEL_COLLECTOR_HEALTH_PORT:-13133}:13133"
+    networks:
+      - trading-net
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.66.0
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    ports:
+      - "${REDIS_EXPORTER_PORT:-9121}:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - trading-net
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.16.0
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:-broker_app}:${POSTGRES_PASSWORD:-broker_app}@postgres:5432/${POSTGRES_DB:-broker}?sslmode=disable"
+    ports:
+      - "${POSTGRES_EXPORTER_PORT:-9187}:9187"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - trading-net
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ./telemetry/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    depends_on:
+      - otel-collector
+      - redis-exporter
+      - postgres-exporter
+    networks:
+      - trading-net
+
+  loki:
+    image: grafana/loki:3.3.2
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./telemetry/loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki_data:/loki
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+    networks:
+      - trading-net
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    volumes:
+      - ./telemetry/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo_data:/var/tempo
+    ports:
+      - "${TEMPO_HTTP_PORT:-3200}:3200"
+    networks:
+      - trading-net
+
+  promtail:
+    image: grafana/promtail:3.3.2
+    command: ["-config.file=/etc/promtail/promtail.yml"]
+    volumes:
+      - ./telemetry/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - ./telemetry/logs:/var/log/telemetry:ro
+      - promtail_positions:/tmp
+    depends_on:
+      - loki
+    networks:
+      - trading-net
+
+  grafana:
+    image: grafana/grafana:11.5.1
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./telemetry/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./telemetry/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    networks:
+      - trading-net
+
+  api-mock:
+    profiles: ["api-mock"]
+    build:
+      context: ./API
+      dockerfile: Dockerfile
+    environment:
+      API_MOCK_PORT: 8081
+      QUOTE_INTERVAL_MS: ${QUOTE_INTERVAL_MS:-1000}
+      MOCK_JWT: ${MOCK_JWT:-mock-access-token}
+      MOCK_REFRESH_TOKEN: ${MOCK_REFRESH_TOKEN:-mock-refresh-token}
+      MOCK_REFRESH_TOKEN_ROTATED: ${MOCK_REFRESH_TOKEN_ROTATED:-mock-refresh-token-rotated}
+    ports:
+      - "${API_MOCK_PORT:-8081}:8081"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8081/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - trading-net
+
+  android-vue-apk:
+    profiles: ["apk"]
+    build:
+      context: ./android-vue
+      dockerfile: Dockerfile.apk
+    environment:
+      VITE_API_BASE_URL: ${ANDROID_VUE_API_BASE_URL:-http://ktor:8080}
+    volumes:
+      - ./android-vue:/workspace
+      - android_vue_node_modules:/workspace/node_modules
+      - android_vue_gradle:/workspace/android/.gradle
+      - android_vue_build:/workspace/android/app/build
+    networks:
+      - trading-net
+
+volumes:
+  postgres_data:
+  redis_data:
+  clickhouse_data:
+  quotes-pipe:
+  grafana_data:
+  loki_data:
+  prometheus_data:
+  tempo_data:
+  promtail_positions:
+  android_vue_node_modules:
+  android_vue_gradle:
+  android_vue_build:
+
+networks:
+  trading-net:
+    driver: bridge

@@ -2,7 +2,7 @@
 FROM eclipse-temurin:21-jdk AS builder
 WORKDIR /app
 COPY . .
-RUN chmod +x gradlew && ./gradlew :server:installDist --no-daemon -q
+RUN sed -i 's/\r$//' gradlew && chmod +x gradlew && ./gradlew :server:installDist --no-daemon -q
 
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
