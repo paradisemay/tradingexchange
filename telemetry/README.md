@@ -2,6 +2,11 @@
 
 This folder owns the observability stack for the trading exchange project.
 
+## Unified stack note
+
+В едином развёртывании observability сервисы поднимаются из корневого compose.
+Локальный `telemetry/docker-compose.yml` оставлен для самостоятельного запуска только telemetry-стека.
+
 ## What is included
 
 - OpenTelemetry Collector for OTLP traces, metrics, and logs.
