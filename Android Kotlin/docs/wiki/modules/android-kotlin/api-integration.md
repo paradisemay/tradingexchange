@@ -60,6 +60,8 @@ Server event:
 {"type":"quote","ticker":"SBER","price":"252.0000","currency":"RUB","timestampMs":1775901000000}
 ```
 
+The instruments screen uses REST search results as the visible list source of truth. Room remains a cache, but it does not expand the current search result with stale instruments. The screen subscribes to WebSocket quotes only for currently visible tickers and renders `quote.price` over `lastPrice`.
+
 ## Historical Charts
 
 Android renders chart UI, but does not calculate historical market data and does not talk to ClickHouse.
@@ -88,6 +90,8 @@ The app keeps all money values as `String` at DTO level and maps them to `BigDec
 `range` controls the visible period. Supported ranges are `1MIN`, `1H`, `1D`, `1W`, `1M`, `6M`, `1Y`; the UI shows `1MIN` as `1m` and keeps `1M` as one month. `interval` controls point/candle granularity. Supported intervals are `1s`, `1m`, `5m`, `15m`, `1h`, `1d`. The UI hides intervals that are greater than or equal to the selected range.
 
 Chart screens load a REST snapshot first, then subscribe to WebSocket quotes for the open ticker. Line charts update the current interval bucket or create a new point only when a new bucket begins; candlestick charts update the current interval bucket or create a new candle.
+
+Live chart state is trimmed by the selected range window. The app keeps at most `floor(range / interval)` buckets, with a defensive cap of 160 buckets for long ranges.
 
 Reconnect policy:
 

@@ -122,40 +122,56 @@ class InstrumentChartViewModel @Inject constructor(
             when (current.chartType) {
                 ChartType.LINE -> current.copy(
                     currency = quote.currency,
-                    linePoints = appendQuoteToLinePoints(current.linePoints, quote, current.interval),
+                    linePoints = appendQuoteToLinePoints(current.linePoints, quote, current.range, current.interval),
                 )
                 ChartType.CANDLES -> current.copy(
                     currency = quote.currency,
-                    candles = appendQuoteToCandles(current.candles, quote, current.interval),
+                    candles = appendQuoteToCandles(current.candles, quote, current.range, current.interval),
                 )
             }
         }
     }
 
-    private fun appendQuoteToCandles(candles: List<Candle>, quote: Quote, interval: ChartInterval): List<Candle> {
+    private fun appendQuoteToCandles(candles: List<Candle>, quote: Quote, range: ChartRange, interval: ChartInterval): List<Candle> {
         val bucket = quote.timestampMs.floorToInterval(interval.toMillis())
         val last = candles.lastOrNull()
         if (last == null || last.timestampMs != bucket) {
-            return (candles + Candle(bucket, quote.price, quote.price, quote.price, quote.price)).takeLast(MAX_CHART_POINTS)
+            return (candles + Candle(bucket, quote.price, quote.price, quote.price, quote.price))
+                .trimCandlesToRangeWindow(bucket, range.toMillis(), pointLimit(range, interval))
         }
         val updated = last.copy(
             high = maxOf(last.high, quote.price),
             low = minOf(last.low, quote.price),
             close = quote.price,
         )
-        return candles.dropLast(1) + updated
+        return (candles.dropLast(1) + updated).trimCandlesToRangeWindow(bucket, range.toMillis(), pointLimit(range, interval))
     }
 
-    private fun appendQuoteToLinePoints(points: List<LineChartPoint>, quote: Quote, interval: ChartInterval): List<LineChartPoint> {
+    private fun appendQuoteToLinePoints(points: List<LineChartPoint>, quote: Quote, range: ChartRange, interval: ChartInterval): List<LineChartPoint> {
         val bucket = quote.timestampMs.floorToInterval(interval.toMillis())
         val last = points.lastOrNull()
-        if (last == null || last.timestampMs != bucket) {
-            return (points + LineChartPoint(bucket, quote.price)).takeLast(MAX_CHART_POINTS)
+        val updated = if (last == null || last.timestampMs != bucket) {
+            points + LineChartPoint(bucket, quote.price)
+        } else {
+            points.dropLast(1) + last.copy(price = quote.price)
         }
-        return points.dropLast(1) + last.copy(price = quote.price)
+        return updated.trimLinePointsToRangeWindow(bucket, range.toMillis(), pointLimit(range, interval))
     }
 
     private fun Long.floorToInterval(intervalMs: Long): Long = (this / intervalMs) * intervalMs
+
+    private fun List<LineChartPoint>.trimLinePointsToRangeWindow(latestBucket: Long, rangeMs: Long, limit: Int): List<LineChartPoint> {
+        val minTimestamp = latestBucket - rangeMs
+        return filter { it.timestampMs > minTimestamp }.takeLast(limit)
+    }
+
+    private fun List<Candle>.trimCandlesToRangeWindow(latestBucket: Long, rangeMs: Long, limit: Int): List<Candle> {
+        val minTimestamp = latestBucket - rangeMs
+        return filter { it.timestampMs > minTimestamp }.takeLast(limit)
+    }
+
+    private fun pointLimit(range: ChartRange, interval: ChartInterval): Int =
+        ((range.toMillis() / interval.toMillis()).coerceAtLeast(1)).coerceAtMost(MAX_CHART_POINTS.toLong()).toInt()
 
     private companion object {
         const val MAX_CHART_POINTS = 160
