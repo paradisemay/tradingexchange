@@ -1,5 +1,6 @@
 [versions]
 argon2 = "2.11"
+clickhouse-jdbc = "0.7.1"
 flyway = "10.21.0"
 hikaricp = "5.1.0"
 kotlin = "2.3.20"
@@ -15,6 +16,7 @@ testcontainers = "1.21.0"
 
 [libraries]
 argon2-jvm = { module = "de.mkammerer:argon2-jvm", version.ref = "argon2" }
+clickhouse-jdbc = { module = "com.clickhouse:clickhouse-jdbc", version.ref = "clickhouse-jdbc" }
 flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
 flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
 hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }

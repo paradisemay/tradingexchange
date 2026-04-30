@@ -4,6 +4,7 @@ data class AppConfig(
     val postgres: PostgresConfig,
     val jwt: JwtConfig,
     val redis: RedisConfig,
+    val clickHouse: ClickHouseConfig,
 ) {
     companion object {
         fun fromEnvironment(): AppConfig = AppConfig(
@@ -30,6 +31,13 @@ data class AppConfig(
                 streamName = env("REDIS_STREAM", "stream:quotes:v1"),
                 consumerGroup = env("REDIS_CONSUMER_GROUP", "cg:ktor:quotes"),
                 consumerName = env("REDIS_CONSUMER_NAME", "ktor-instance-1"),
+            ),
+            clickHouse = ClickHouseConfig(
+                host = env("CLICKHOUSE_HOST", "localhost"),
+                port = env("CLICKHOUSE_PORT", "8123").toInt(),
+                database = env("CLICKHOUSE_DATABASE", "trading"),
+                user = env("CLICKHOUSE_USER", "trading_app"),
+                password = env("CLICKHOUSE_PASSWORD", ""),
             ),
         )
 
@@ -69,4 +77,14 @@ data class RedisConfig(
         "redis://:$password@$host:$port"
     else
         "redis://$host:$port"
+}
+
+data class ClickHouseConfig(
+    val host: String,
+    val port: Int,
+    val database: String,
+    val user: String,
+    val password: String,
+) {
+    val jdbcUrl: String get() = "jdbc:ch://$host:$port/$database"
 }

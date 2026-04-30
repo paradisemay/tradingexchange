@@ -97,13 +97,19 @@ services:
       REDIS_STREAM: ${REDIS_STREAM:-stream:quotes:v1}
       REDIS_CONSUMER_GROUP: ${REDIS_CONSUMER_GROUP:-cg:ktor:quotes}
       REDIS_CONSUMER_NAME: ${REDIS_CONSUMER_NAME:-ktor-instance-1}
-      # OTel: экспорт выключен по умолчанию — otel-collector поднимается командой Telemetry.
-      # Чтобы включить: OTEL_TRACES_EXPORTER=otlp OTEL_METRICS_EXPORTER=otlp OTEL_LOGS_EXPORTER=otlp
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
+      # OTel: telemetry-team поднял otel-collector в telemetry-net (container: telemetry-otel-collector).
+      # broker-ktor подключён к telemetry-net, поэтому резолвится по container_name.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://telemetry-otel-collector:4318}
       OTEL_SERVICE_NAME: ktor-backend
-      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-none}
-      OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-none}
-      OTEL_LOGS_EXPORTER: ${OTEL_LOGS_EXPORTER:-none}
+      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
+      OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-otlp}
+      OTEL_LOGS_EXPORTER: ${OTEL_LOGS_EXPORTER:-otlp}
+      # ClickHouse (clickhouse-net, поднимается модулем clickhouse/docker-compose.yml)
+      CLICKHOUSE_HOST: ${CLICKHOUSE_HOST:-tradingexchange-clickhouse}
+      CLICKHOUSE_PORT: ${CLICKHOUSE_PORT:-8123}
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-trading}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-trading_app}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD is required}
       PORT: "8080"
     ports:
       - "8080:8080"
@@ -114,6 +120,8 @@ services:
         condition: service_healthy
     networks:
       - broker-net
+      - telemetry-net
+      - clickhouse-net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health/live"]
       interval: 10s
@@ -128,3 +136,8 @@ volumes:
 networks:
   broker-net:
     driver: bridge
+  # Внешние сети — поднимаются соответствующими модулями
+  telemetry-net:
+    external: true
+  clickhouse-net:
+    external: true
