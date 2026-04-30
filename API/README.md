@@ -3,6 +3,15 @@
 This module is the contract source for mobile clients and backend integration.
 It does not proxy to Ktor and does not require PostgreSQL, Redis, Go, or the C driver.
 
+## Unified stack note
+
+In the unified root deployment, API mock is optional and started with a profile:
+
+```bash
+cd ..
+docker compose --profile api-mock up --build -d
+```
+
 ## Quick Start
 
 ```bash

@@ -2,6 +2,11 @@
 
 ClickHouse stores historical quote time series for charts and analytical reads. Mobile clients never connect to ClickHouse directly; Ktor reads prepared data and exposes an application API.
 
+## Unified stack note
+
+Для end-to-end запуска всей платформы используйте корневой `docker-compose.yml`.
+Локальный compose в этом модуле нужен для изолированной отладки ClickHouse.
+
 ## Scope
 
 This module owns:
